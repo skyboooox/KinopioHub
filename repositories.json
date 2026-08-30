@@ -118,7 +118,7 @@
       "repository": "skyboooox/Kinopio-server",
       "upstream": "nats-io/nats-server",
       "path": "Kinopio-server",
-      "role": "NATS Server downstream fork",
+      "role": "NATS Server fork with wildcard subscription changes",
       "language": "Go",
       "visibility": "public",
       "defaultBranch": "main",

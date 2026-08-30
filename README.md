@@ -4,6 +4,12 @@ KinopioHub is the central entry point for the KinopioHub project family: multi-l
 
 [中文说明](README_CN.md)
 
+## Origin
+
+KinopioHub began with `KinopioHub.JS`; the other language implementations were subsequently derived from the JavaScript implementation. Separately, `Kinopio-server` is a downstream fork of NATS Server that changes wildcard subscription logic.
+
+See [Project origins and lineage](docs/origins.md) for the complete provenance record and the distinction between upstream NATS behavior and Kinopio-specific behavior.
+
 ## Projects
 
 | Project | Role | Stack |
@@ -56,6 +62,7 @@ Open `KinopioHub.code-workspace` in VS Code to work with all repositories as sep
 
 ## Documentation
 
+- [Project origins and lineage](docs/origins.md)
 - [Architecture and repository boundaries](docs/architecture.md)
 - [Development workflow](docs/development.md)
 - [Compatibility policy](docs/compatibility.md)

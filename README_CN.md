@@ -4,6 +4,12 @@ KinopioHub 是 KinopioHub 项目族的统一入口：围绕作用域化 NATS 消
 
 [English](README.md)
 
+## 项目起源
+
+KinopioHub 最初从 `KinopioHub.JS` 开始；其他语言实现随后由 JavaScript 实现演变而来。与此同时，`Kinopio-server` 是 NATS Server 的下游分支，修改了通配符订阅逻辑。
+
+完整的来源记录，以及 NATS 上游行为与 Kinopio 特有行为之间的区别，见[项目起源与血缘关系](docs/origins.md)。
+
 ## 项目组成
 
 | 项目 | 定位 | 技术栈 |
@@ -56,6 +62,7 @@ just test js
 
 ## 文档
 
+- [项目起源与血缘关系](docs/origins.md)
 - [架构与仓库边界](docs/architecture.md)
 - [开发工作流](docs/development.md)
 - [兼容性策略](docs/compatibility.md)
