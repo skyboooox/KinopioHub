@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "workspace": {
+    "layout": "siblings",
+    "root": ".."
+  },
+  "repositories": [
+    {
+      "id": "js",
+      "name": "KinopioHub.JS",
+      "repository": "skyboooox/KinopioHub.JS",
+      "path": "KinopioHub.JS",
+      "role": "JavaScript SDK",
+      "language": "JavaScript",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "environment": {
+        "KINOPIO_SKIP_CA_TRUST_INSTALL": "1"
+      },
+      "setup": [
+        ["npm", "install"]
+      ],
+      "test": [
+        ["npm", "test"]
+      ]
+    },
+    {
+      "id": "python",
+      "name": "KinopioHub.py",
+      "repository": "skyboooox/KinopioHub.py",
+      "path": "KinopioHub.py",
+      "role": "Python SDK",
+      "language": "Python",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "setup": [
+        ["uv", "sync", "--extra", "dev"]
+      ],
+      "test": [
+        ["uv", "run", "ruff", "check", "."],
+        ["uv", "run", "mypy", "."],
+        ["uv", "run", "pytest", "-m", "not slow"]
+      ]
+    },
+    {
+      "id": "ros",
+      "name": "KinopioHub.ROS",
+      "repository": "skyboooox/KinopioHub.ROS",
+      "path": "KinopioHub.ROS",
+      "role": "ROS 1/2 bridge",
+      "language": "Python",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "setup": [],
+      "test": [
+        ["./scripts/check.sh", "--skip-docker"]
+      ]
+    },
+    {
+      "id": "web",
+      "name": "KinopioHub.web",
+      "repository": "skyboooox/KinopioHub.web",
+      "path": "KinopioHub.web",
+      "role": "Web debugger and console",
+      "language": "TypeScript",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "setup": [
+        ["npm", "install"]
+      ],
+      "test": [
+        ["npm", "run", "typecheck"],
+        ["npm", "run", "build"]
+      ]
+    },
+    {
+      "id": "arduino",
+      "name": "KinopioHub.ino",
+      "repository": "skyboooox/KinopioHub.ino",
+      "path": "KinopioHub.ino",
+      "role": "ESP32 Arduino SDK",
+      "language": "C++",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "setup": [
+        ["npm", "--prefix", "test", "install"]
+      ],
+      "test": [
+        ["npm", "--prefix", "test", "test"]
+      ]
+    },
+    {
+      "id": "cpp",
+      "name": "KinopioHub.cpp",
+      "repository": "skyboooox/KinopioHub.cpp",
+      "path": "KinopioHub.cpp",
+      "role": "Native C++20 SDK",
+      "language": "C++",
+      "defaultBranch": "main",
+      "license": "GPL-3.0-or-later",
+      "setup": [
+        ["cmake", "-S", ".", "-B", "build", "-DBUILD_TESTING=ON", "-DKINOPIO_ENABLE_INSTALL=OFF"]
+      ],
+      "test": [
+        ["cmake", "--build", "build"],
+        ["ctest", "--test-dir", "build", "--output-on-failure"]
+      ]
+    },
+    {
+      "id": "server",
+      "name": "Kinopio-server",
+      "repository": "skyboooox/Kinopio-server",
+      "upstream": "nats-io/nats-server",
+      "path": "Kinopio-server",
+      "role": "NATS Server downstream fork",
+      "language": "Go",
+      "defaultBranch": "main",
+      "license": "Apache-2.0",
+      "setup": [],
+      "test": [
+        ["go", "test", "./..."]
+      ]
+    }
+  ]
+}

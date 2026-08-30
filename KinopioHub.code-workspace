@@ -1,0 +1,48 @@
+{
+  "folders": [
+    { "name": "KinopioHub portal", "path": "." },
+    { "name": "JavaScript SDK", "path": "../KinopioHub.JS" },
+    { "name": "Python SDK", "path": "../KinopioHub.py" },
+    { "name": "ROS bridge", "path": "../KinopioHub.ROS" },
+    { "name": "Web console", "path": "../KinopioHub.web" },
+    { "name": "Arduino SDK", "path": "../KinopioHub.ino" },
+    { "name": "C++ SDK", "path": "../KinopioHub.cpp" },
+    { "name": "NATS server fork", "path": "../Kinopio-server" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.DS_Store": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "golang.go",
+      "ms-vscode.cpptools",
+      "platformio.platformio-ide"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "KinopioHub: status",
+        "type": "process",
+        "command": "python3",
+        "args": ["scripts/workspace.py", "status"],
+        "options": { "cwd": "${workspaceFolder:KinopioHub portal}" },
+        "problemMatcher": []
+      },
+      {
+        "label": "KinopioHub: validate manifest",
+        "type": "process",
+        "command": "python3",
+        "args": ["scripts/workspace.py", "validate"],
+        "options": { "cwd": "${workspaceFolder:KinopioHub portal}" },
+        "problemMatcher": []
+      }
+    ]
+  }
+}

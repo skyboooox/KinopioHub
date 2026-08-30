@@ -1,0 +1,21 @@
+name: Validate portal metadata
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compile workspace manager
+        run: python3 -m py_compile scripts/workspace.py
+      - name: Validate repository manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/workspace.py validate --remote
