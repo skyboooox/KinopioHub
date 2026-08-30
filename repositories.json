@@ -12,6 +12,7 @@
       "path": "KinopioHub.JS",
       "role": "JavaScript SDK",
       "language": "JavaScript",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "environment": {
@@ -31,6 +32,7 @@
       "path": "KinopioHub.py",
       "role": "Python SDK",
       "language": "Python",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
@@ -49,6 +51,7 @@
       "path": "KinopioHub.ROS",
       "role": "ROS 1/2 bridge",
       "language": "Python",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [],
@@ -63,6 +66,7 @@
       "path": "KinopioHub.web",
       "role": "Web debugger and console",
       "language": "TypeScript",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
@@ -80,6 +84,7 @@
       "path": "KinopioHub.ino",
       "role": "ESP32 Arduino SDK",
       "language": "C++",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
@@ -96,6 +101,7 @@
       "path": "KinopioHub.cpp",
       "role": "Native C++20 SDK",
       "language": "C++",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
@@ -114,6 +120,7 @@
       "path": "Kinopio-server",
       "role": "NATS Server downstream fork",
       "language": "Go",
+      "visibility": "public",
       "defaultBranch": "main",
       "license": "Apache-2.0",
       "setup": [],

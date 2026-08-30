@@ -50,7 +50,15 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     for index, repository in enumerate(repositories):
         if not isinstance(repository, dict):
             raise WorkspaceError(f"repositories[{index}] must be an object")
-        for key in ("id", "name", "repository", "path", "role", "defaultBranch"):
+        for key in (
+            "id",
+            "name",
+            "repository",
+            "path",
+            "role",
+            "visibility",
+            "defaultBranch",
+        ):
             if not isinstance(repository.get(key), str) or not repository[key]:
                 raise WorkspaceError(f"repositories[{index}].{key} must be a non-empty string")
         identifier = repository["id"]
@@ -65,6 +73,8 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
             raise WorkspaceError(f"repository path must be one sibling directory name: {path}")
         if not REPOSITORY_PATTERN.fullmatch(repository["repository"]):
             raise WorkspaceError(f"invalid GitHub repository: {repository['repository']}")
+        if repository["visibility"] not in ("public", "private"):
+            raise WorkspaceError(f"invalid visibility for {identifier}")
         upstream = repository.get("upstream")
         if upstream is not None and (
             not isinstance(upstream, str) or not REPOSITORY_PATTERN.fullmatch(upstream)
@@ -165,14 +175,19 @@ def ensure_remote(path: Path, name: str, repository_name: str, *, create: bool) 
     ) == 0
 
 
-def command_validate(manifest: dict[str, Any], *, remote: bool) -> int:
+def command_validate(manifest: dict[str, Any], *, remote: bool, include_private: bool) -> int:
     print(f"Validated {len(manifest['repositories'])} repository definitions.")
     if not remote:
         return 0
     if shutil.which("gh") is None:
         raise WorkspaceError("gh is required for remote validation")
     failed = False
-    remote_names = [repository["repository"] for repository in manifest["repositories"]]
+    remote_names = []
+    for repository in manifest["repositories"]:
+        if repository["visibility"] == "private" and not include_private:
+            print(f"skip: {repository['repository']} is private")
+            continue
+        remote_names.append(repository["repository"])
     remote_names.extend(
         repository["upstream"]
         for repository in manifest["repositories"]
@@ -186,11 +201,14 @@ def command_validate(manifest: dict[str, Any], *, remote: bool) -> int:
 
 def command_list(manifest: dict[str, Any]) -> int:
     print(f"Workspace root: {workspace_root(manifest)}")
-    print(f"{'ID':<10} {'PATH':<20} {'STATE':<9} ROLE")
+    print(f"{'ID':<10} {'PATH':<20} {'ACCESS':<9} {'STATE':<9} ROLE")
     for repository in manifest["repositories"]:
         path = repository_path(manifest, repository)
         state = "ready" if is_git_repository(path) else "missing"
-        print(f"{repository['id']:<10} {repository['path']:<20} {state:<9} {repository['role']}")
+        print(
+            f"{repository['id']:<10} {repository['path']:<20} "
+            f"{repository['visibility']:<9} {state:<9} {repository['role']}"
+        )
     return 0
 
 
@@ -300,6 +318,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("pull", help="fast-forward clean repositories from origin")
     validate = subparsers.add_parser("validate", help="validate the repository manifest")
     validate.add_argument("--remote", action="store_true", help="also verify GitHub repositories")
+    validate.add_argument(
+        "--include-private",
+        action="store_true",
+        help="also verify private repositories using the current gh credentials",
+    )
     for action in ("setup", "test"):
         action_parser = subparsers.add_parser(action, help=f"run {action} commands")
         action_parser.add_argument("target", nargs="?", default="all", help="repository id or all")
@@ -311,7 +334,11 @@ def main() -> int:
     try:
         manifest = load_manifest()
         if args.command == "validate":
-            return command_validate(manifest, remote=args.remote)
+            return command_validate(
+                manifest,
+                remote=args.remote,
+                include_private=args.include_private,
+            )
         if args.command == "list":
             return command_list(manifest)
         if args.command == "bootstrap":
