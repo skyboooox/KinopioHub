@@ -19,10 +19,16 @@
         "KINOPIO_SKIP_CA_TRUST_INSTALL": "1"
       },
       "setup": [
-        ["npm", "install"]
+        [
+          "npm",
+          "install"
+        ]
       ],
       "test": [
-        ["npm", "test"]
+        [
+          "npm",
+          "test"
+        ]
       ]
     },
     {
@@ -36,12 +42,32 @@
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
-        ["uv", "sync", "--extra", "dev"]
+        [
+          "uv",
+          "sync",
+          "--extra",
+          "dev"
+        ]
       ],
       "test": [
-        ["uv", "run", "ruff", "check", "."],
-        ["uv", "run", "mypy", "."],
-        ["uv", "run", "pytest", "-m", "not slow"]
+        [
+          "uv",
+          "run",
+          "ruff",
+          "check",
+          "."
+        ],
+        [
+          "uv",
+          "run",
+          "mypy",
+          "."
+        ],
+        [
+          "uv",
+          "run",
+          "pytest"
+        ]
       ]
     },
     {
@@ -49,14 +75,40 @@
       "name": "KinopioHub.ROS",
       "repository": "skyboooox/KinopioHub.ROS",
       "path": "KinopioHub.ROS",
-      "role": "ROS 1/2 bridge",
+      "role": "ROS 2 RAM and live-control bridge",
       "language": "Python",
       "visibility": "public",
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
-      "setup": [],
+      "setup": [
+        [
+          "uv",
+          "venv",
+          "--system-site-packages"
+        ],
+        [
+          "uv",
+          "pip",
+          "install",
+          "--python",
+          ".venv/bin/python",
+          "-e",
+          "../KinopioHub.py",
+          "-e",
+          ".[test]"
+        ]
+      ],
       "test": [
-        ["./scripts/check.sh", "--skip-docker"]
+        [
+          ".venv/bin/python",
+          "-m",
+          "pytest"
+        ],
+        [
+          "node",
+          "--check",
+          "docker/check.mjs"
+        ]
       ]
     },
     {
@@ -70,11 +122,22 @@
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
-        ["npm", "install"]
+        [
+          "npm",
+          "install"
+        ]
       ],
       "test": [
-        ["npm", "run", "typecheck"],
-        ["npm", "run", "build"]
+        [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        [
+          "npm",
+          "run",
+          "build"
+        ]
       ]
     },
     {
@@ -88,10 +151,45 @@
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
-        ["npm", "--prefix", "test", "install"]
+        [
+          "pio",
+          "pkg",
+          "install"
+        ]
       ],
       "test": [
-        ["npm", "--prefix", "test", "test"]
+        [
+          "pio",
+          "run"
+        ],
+        [
+          "node",
+          "test/protocol.mjs"
+        ],
+        [
+          "node",
+          "test/transport-flush.mjs"
+        ],
+        [
+          "node",
+          "test/transport-certificate-dates.mjs"
+        ],
+        [
+          "node",
+          "test/transport-send.mjs"
+        ],
+        [
+          "node",
+          "test/transport-readiness.mjs"
+        ],
+        [
+          "node",
+          "test/transport-readline.mjs"
+        ],
+        [
+          "node",
+          "test/transport-line-chunks.mjs"
+        ]
       ]
     },
     {
@@ -105,11 +203,27 @@
       "defaultBranch": "main",
       "license": "GPL-3.0-or-later",
       "setup": [
-        ["cmake", "-S", ".", "-B", "build", "-DBUILD_TESTING=ON", "-DKINOPIO_ENABLE_INSTALL=OFF"]
+        [
+          "cmake",
+          "-S",
+          ".",
+          "-B",
+          "build-v3",
+          "-DBUILD_TESTING=ON"
+        ]
       ],
       "test": [
-        ["cmake", "--build", "build"],
-        ["ctest", "--test-dir", "build", "--output-on-failure"]
+        [
+          "cmake",
+          "--build",
+          "build-v3"
+        ],
+        [
+          "ctest",
+          "--test-dir",
+          "build-v3",
+          "--output-on-failure"
+        ]
       ]
     },
     {
@@ -125,7 +239,11 @@
       "license": "Apache-2.0",
       "setup": [],
       "test": [
-        ["go", "test", "./..."]
+        [
+          "go",
+          "test",
+          "./..."
+        ]
       ]
     }
   ]

@@ -30,16 +30,16 @@
       {
         "label": "KinopioHub: status",
         "type": "process",
-        "command": "python3",
-        "args": ["scripts/workspace.py", "status"],
+        "command": "node",
+        "args": ["scripts/workspace.mjs", "status"],
         "options": { "cwd": "${workspaceFolder:KinopioHub portal}" },
         "problemMatcher": []
       },
       {
         "label": "KinopioHub: validate manifest",
         "type": "process",
-        "command": "python3",
-        "args": ["scripts/workspace.py", "validate"],
+        "command": "node",
+        "args": ["scripts/workspace.mjs", "validate"],
         "options": { "cwd": "${workspaceFolder:KinopioHub portal}" },
         "problemMatcher": []
       }

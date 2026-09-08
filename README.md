@@ -1,73 +1,35 @@
 # KinopioHub
 
-KinopioHub is the central entry point for the KinopioHub project family: multi-language SDKs and tools for scoped NATS messaging, plus a maintained NATS server fork.
+Project version: **3.0.0** (not yet released).
 
-[中文说明](README_CN.md)
+[简体中文](README_CN.md) · [Wiki](https://github.com/skyboooox/KinopioHub/wiki/Home-EN)
 
-## Origin
+Share a current variable across languages and devices. A personally maintained project built on NATS Core, with automatic LAN nodes and SDK status reports.
 
-KinopioHub began with `KinopioHub.JS`; the other language implementations were subsequently derived from the JavaScript implementation. Separately, `Kinopio-server` is a downstream fork of NATS Server that changes wildcard subscription logic.
+```js
+const battery = hub.scope('devices').var('battery');
+battery.watch(value => console.log(value));
+await battery.set(80);
+```
 
-See [Project origins and lineage](docs/origins.md) for the complete provenance record and the distinction between upstream NATS behavior and Kinopio-specific behavior.
+Variables live in SDK memory. Running instances retain current values offline and merge on reconnect; when all copies exit, state disappears.
 
 ## Projects
 
-| Project | Role | Stack |
-| --- | --- | --- |
-| [KinopioHub.JS](https://github.com/skyboooox/KinopioHub.JS) | Browser and Node.js SDK | JavaScript |
-| [KinopioHub.py](https://github.com/skyboooox/KinopioHub.py) | Python SDK and local leaf runtime | Python |
-| [KinopioHub.ROS](https://github.com/skyboooox/KinopioHub.ROS) | ROS 1/2 topic and service bridge | Python / ROS |
-| [KinopioHub.web](https://github.com/skyboooox/KinopioHub.web) | Browser debugger and operations console | TypeScript / Vite |
-| [KinopioHub.ino](https://github.com/skyboooox/KinopioHub.ino) | ESP32 Arduino client | C++ / Arduino |
-| [KinopioHub.cpp](https://github.com/skyboooox/KinopioHub.cpp) | Native C++20 SDK | C++ / CMake |
-| [Kinopio-server](https://github.com/skyboooox/Kinopio-server) | Kinopio-maintained downstream fork of `nats-io/nats-server` | Go |
+| Project | Guide |
+| --- | --- |
+| [JavaScript](https://github.com/skyboooox/KinopioHub.JS) | [Node.js and browsers](https://github.com/skyboooox/KinopioHub/wiki/JavaScript) |
+| [Python](https://github.com/skyboooox/KinopioHub.py) | [asyncio SDK](https://github.com/skyboooox/KinopioHub/wiki/Python) |
+| [C++](https://github.com/skyboooox/KinopioHub.cpp) | [Native SDK](https://github.com/skyboooox/KinopioHub/wiki/Cpp) |
+| [Arduino](https://github.com/skyboooox/KinopioHub.ino) | [ESP32 client](https://github.com/skyboooox/KinopioHub/wiki/Arduino) |
+| [ROS](https://github.com/skyboooox/KinopioHub.ROS) | [ROS 2 bridge](https://github.com/skyboooox/KinopioHub/wiki/ROS) |
+| [Web](https://github.com/skyboooox/KinopioHub.web) | [Console](https://github.com/skyboooox/KinopioHub/wiki/Web) |
+| [Server](https://github.com/skyboooox/Kinopio-server) | [Optional NATS fork](https://github.com/skyboooox/KinopioHub/wiki/Server) |
 
-Each project remains an independent Git repository with its own releases and toolchain. This repository provides shared documentation, workspace automation, compatibility policy, and a home for future cross-repository integration tests.
+The JS, Python, C++, ESP32 and ROS v3 rewrites are currently unpublished source checkouts. Web still uses v2. Existing published packages do not contain these rewrites; v3 changes both the API and wire protocol.
 
-## Workspace setup
+## This repository
 
-The supported local layout uses sibling repositories:
+This is the documentation and workspace portal. Wiki bodies live in [docs/](docs/wiki-home.en.md); runnable integration checks live in `integration/`. Each implementation keeps its own code, tests and two README languages.
 
-```text
-KinopioHub.dev/
-├── KinopioHub/
-├── KinopioHub.JS/
-├── KinopioHub.py/
-├── KinopioHub.ROS/
-├── KinopioHub.web/
-├── KinopioHub.ino/
-├── KinopioHub.cpp/
-└── Kinopio-server/
-```
-
-Create the workspace from an empty development directory:
-
-```bash
-gh repo clone skyboooox/KinopioHub KinopioHub
-cd KinopioHub
-python3 scripts/workspace.py bootstrap
-```
-
-If [`just`](https://just.systems/) is installed, the shorter commands are:
-
-```bash
-just bootstrap
-just status
-just fetch
-just setup js
-just test js
-```
-
-Open `KinopioHub.code-workspace` in VS Code to work with all repositories as separate source-control roots.
-
-## Documentation
-
-- [Project origins and lineage](docs/origins.md)
-- [Architecture and repository boundaries](docs/architecture.md)
-- [Development workflow](docs/development.md)
-- [Compatibility policy](docs/compatibility.md)
-- [Integration test home](integration/README.md)
-
-## License
-
-This portal repository is licensed under GPL-3.0-or-later. `Kinopio-server` remains separately licensed under Apache-2.0 as inherited from NATS Server; consult each repository for its authoritative license.
+For workspace setup, checks and Wiki maintenance, see [Development](docs/development.md). Small, focused contributions are welcome through [Issues](https://github.com/skyboooox/KinopioHub/issues) or the relevant implementation repository.

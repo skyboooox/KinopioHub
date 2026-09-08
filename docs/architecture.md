@@ -1,48 +1,62 @@
-# Architecture and repository boundaries
+# How it works
 
-KinopioHub uses a polyrepo workspace. The repositories are developed together but keep independent Git histories, releases, package registries, and build systems.
+[简体中文](architecture.zh.md) · [Home](wiki-home.en.md)
 
-The implementation lineage is asymmetric: `KinopioHub.JS` came first and is the historical reference for the language variants. A shared written specification may supersede implementation-defined behavior over time, but until then cross-language differences should be compared against the JavaScript behavior and documented explicitly.
+In this chapter
 
-## Boundaries
+- [A variable shared by online instances](#chapter-1)
+- [Automatic LAN nodes](#chapter-2)
+- [Existing servers and remote networks](#chapter-3)
+- [SDK health and controls](#chapter-4)
 
-- `KinopioHub` owns project-wide navigation, architecture documents, compatibility policy, workspace automation, and cross-repository integration tests.
-- `KinopioHub.JS` is the original implementation and the historical reference for common client behavior.
-- Python, C++, Arduino, and ROS implementations were derived from the JavaScript implementation and should preserve equivalent behavior where their platforms allow it.
-- SDK and application repositories own their implementation, unit tests, packaging, and release automation. `KinopioHub.web` is an accompanying application rather than another normative protocol implementation.
-- `Kinopio-server` is a downstream fork of `nats-io/nats-server` with modified wildcard subscription logic. Its `origin` points to `skyboooox/Kinopio-server`; its `upstream` points to `nats-io/nats-server`.
-- The outer `KinopioHub.dev` directory is a local container, not a Git repository and not a release artifact.
+<a id="chapter-1"></a>
+## A variable shared by online instances
 
-## Dependency direction
+A variable is identified by `namespace + scope + name`. Use the same names and a connected NATS topology to exchange it across SDKs. A namespace separates data names; it is not an access-control boundary. Configure authentication and subject permissions in NATS.
 
-```text
-      KinopioHub.JS
-       │      │
-       │      └──────────────► KinopioHub.web
-       │
-       ├──► KinopioHub.py
-       ├──► KinopioHub.cpp
-       ├──► KinopioHub.ino
-       └──► KinopioHub.ROS
+Each Hub starts with empty memory and a new writer identity. It asks online peers for their current records and continues receiving updates. Without a peer, a bounded lookup establishes local absence and the application can write a new value.
 
-nats-io/nats-server
-              │ downstream fork
-              ▼
-       Kinopio-server
-       (wildcard subscription changes)
-```
+| Event | Result |
+| --- | --- |
+| `set()` or delete | Update local RAM, even while disconnected |
+| Reconnect | Merge retained current records with online peers |
+| New device joins | Obtain values from an online copy, if one exists |
+| Page reload, process restart or last copy exits | No local restoration; surviving online peers are the only recovery source |
+| `flush()` succeeds | NATS transport completed, without proving peer receipt or device execution |
 
-The portal does not vendor implementation source. Cross-repository tests check compatible released versions or explicitly selected commits.
+Records contain a logical counter and writer ID. The greater counter wins; ties use writer ID order. Writes do not use wall-clock time. The same version is deduplicated, but setting an equal value again creates a new version. Deletes retain a versioned tombstone in RAM, so an older copy cannot undo them. Periodic peer queries repair missed updates.
 
-Because the server fork changes subscription behavior, integration results must identify whether they ran against upstream NATS Server or `Kinopio-server`. Behavior that depends on the fork must not be presented as standard NATS behavior.
+JSON null, zero and false are values. Unknown and absent are separate metadata states. Values must fit the receiving SDK's limits; integer-valued numbers must stay within ±(2^53−1). There is no history, disk persistence, cross-variable transaction or conditional update. A broker alone does not retain variables for a later SDK.
 
-## Cross-repository changes
+<a id="chapter-2"></a>
+## Automatic LAN nodes
 
-A change that affects more than one implementation should have:
+Creating a Node.js, Python or C++ Hub enables discovery and election by default. Importing the package alone starts nothing. Compatible participants compare reachability, latency, failure rate and host load, with a minimum term and repeated improvement checks to limit handoffs. The winner owns a plain NATS Core process and peers use its endpoint.
 
-1. A compatibility or protocol issue in this repository.
-2. Separate implementation branches and pull requests in affected repositories.
-3. A compatibility row that records the first compatible releases.
-4. An integration test before the change is declared complete.
+The election domain includes group, authentication and leaf upstream settings. Namespace does not create a separate node. Hubs in one process share a manager; each physical host contributes one vote. This targets small IPv4 LANs, with up to 32 other candidates per manager, multicast discovery and direct control probes. Firewalls and isolated multicast can prevent coordination.
 
-This preserves release independence while keeping protocol changes coordinated.
+Mutually reachable members eventually converge to one node. Partitions may elect separate nodes and briefly overlap after reconnecting. The SDK stops only its own processes. Managed LAN listeners use plaintext NATS/WS and assume a trusted LAN; the SDK does not install certificates or change firewall rules.
+
+The first elected startup may download a version-pinned, integrity-checked NATS executable. Its cache contains the executable, not variable data. Supply `mesh.binary` for an existing compatible executable. `mesh: false` selects client-only operation. Browser and ESP32 instances never host or vote.
+
+<a id="chapter-3"></a>
+## Existing servers and remote networks
+
+`servers` selects client endpoints. SDKs can probe alternatives and switch when network quality improves, with hysteresis. Endpoint selection does not connect otherwise separate NATS systems.
+
+`mesh.upstreams` selects real **leaf-node endpoints** for the managed broker. Client and leaf ports are not interchangeable. Alternatives must belong to one upstream system and use a compatible transport mode. A TCP probe does not prove leaf authentication; the SDK checks actual leaf connectivity before applying an upstream-connected local node. See the [Server guide](server.md) for a minimal topology.
+
+| Runtime | Direct client transport | Automatic node |
+| --- | --- | --- |
+| Node.js / Python | TCP, TLS, WS, WSS | Yes |
+| Browser | WS, WSS | No |
+| C++ | TCP, TLS | Yes; WS/WSS leaf upstreams run through NATS Server |
+| ESP32 | TCP, TLS | No |
+| ROS 2 | TCP, TLS | Inherits Python defaults; explicit servers default to client-only |
+
+<a id="chapter-4"></a>
+## SDK health and controls
+
+SDKs normally report identity, uptime, connection, counters and errors every five seconds. Reports exclude business values and credentials. Instance `online` / `offline` means a report was observed recently / has expired; `unknown` means the observer is disconnected. This does not prove device power or application health. Reports are also memory-only.
+
+Use variables for desired state and a separate reported value for the device's result. [Python live channels](python.md#live-channels) and [ROS controls](ros.md#controls) add expiring, non-replayed commands. Transport acknowledgment still does not mean an actuator completed an action.

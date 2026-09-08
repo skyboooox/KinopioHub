@@ -13,9 +13,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Compile workspace manager
-        run: python3 -m py_compile scripts/workspace.py
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Check workspace manager syntax
+        run: node --check scripts/workspace.mjs
+      - name: Test workspace manager
+        run: node --test scripts/workspace.test.mjs
+      - name: Test Wiki generation
+        run: node --test scripts/wiki.test.mjs
+      - name: Build and check Wiki pages
+        run: |
+          node scripts/wiki.mjs build
+          node scripts/wiki.mjs check
       - name: Validate repository manifest
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/workspace.py validate --remote
+        run: node scripts/workspace.mjs validate --remote

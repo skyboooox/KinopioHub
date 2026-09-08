@@ -1,73 +1,35 @@
 # KinopioHub
 
-KinopioHub 是 KinopioHub 项目族的统一入口：围绕作用域化 NATS 消息通信提供多语言 SDK、桥接与调试工具，并维护一个 NATS Server 下游分支。
+项目版本：**3.0.0**（尚未发布）。
 
-[English](README.md)
+[English](README.md) · [Wiki](https://github.com/skyboooox/KinopioHub/wiki)
 
-## 项目起源
+在不同语言和设备之间共享同一个当前变量。一个基于 NATS Core 的个人项目，提供自动局域网节点和 SDK 状态报告。
 
-KinopioHub 最初从 `KinopioHub.JS` 开始；其他语言实现随后由 JavaScript 实现演变而来。与此同时，`Kinopio-server` 是 NATS Server 的下游分支，修改了通配符订阅逻辑。
-
-完整的来源记录，以及 NATS 上游行为与 Kinopio 特有行为之间的区别，见[项目起源与血缘关系](docs/origins.md)。
-
-## 项目组成
-
-| 项目 | 定位 | 技术栈 |
-| --- | --- | --- |
-| [KinopioHub.JS](https://github.com/skyboooox/KinopioHub.JS) | 浏览器与 Node.js SDK | JavaScript |
-| [KinopioHub.py](https://github.com/skyboooox/KinopioHub.py) | Python SDK 与本地 leaf runtime | Python |
-| [KinopioHub.ROS](https://github.com/skyboooox/KinopioHub.ROS) | ROS 1/2 topic 与 service 桥接 | Python / ROS |
-| [KinopioHub.web](https://github.com/skyboooox/KinopioHub.web) | 浏览器调试与运维控制台 | TypeScript / Vite |
-| [KinopioHub.ino](https://github.com/skyboooox/KinopioHub.ino) | ESP32 Arduino 客户端 | C++ / Arduino |
-| [KinopioHub.cpp](https://github.com/skyboooox/KinopioHub.cpp) | 原生 C++20 SDK | C++ / CMake |
-| [Kinopio-server](https://github.com/skyboooox/Kinopio-server) | Kinopio 维护的 `nats-io/nats-server` 下游分支 | Go |
-
-每个项目继续使用独立 Git 仓库、版本和构建工具。本仓库负责统一文档、工作区自动化、兼容性策略，以及未来的跨仓库集成测试。
-
-## 本地开发工作区
-
-推荐把所有仓库放在同一个纯本地开发目录中，并保持兄弟目录关系：
-
-```text
-KinopioHub.dev/
-├── KinopioHub/          # 本入口仓库
-├── KinopioHub.JS/
-├── KinopioHub.py/
-├── KinopioHub.ROS/
-├── KinopioHub.web/
-├── KinopioHub.ino/
-├── KinopioHub.cpp/
-└── Kinopio-server/      # NATS Server 下游分支
+```js
+const battery = hub.scope('devices').var('battery');
+battery.watch(value => console.log(value));
+await battery.set(80);
 ```
 
-从空的开发目录开始：
+变量只在 SDK 内存中保存。仍在运行的实例断网后保留当前值，重连时合并；全部副本退出后，状态消失。
 
-```bash
-gh repo clone skyboooox/KinopioHub KinopioHub
-cd KinopioHub
-python3 scripts/workspace.py bootstrap
-```
+## 项目
 
-如果安装了 [`just`](https://just.systems/)，可以使用简写命令：
+| 项目 | 指南 |
+| --- | --- |
+| [JavaScript](https://github.com/skyboooox/KinopioHub.JS) | [Node.js 和浏览器](https://github.com/skyboooox/KinopioHub/wiki/JavaScript-ZH) |
+| [Python](https://github.com/skyboooox/KinopioHub.py) | [asyncio SDK](https://github.com/skyboooox/KinopioHub/wiki/Python-ZH) |
+| [C++](https://github.com/skyboooox/KinopioHub.cpp) | [原生 SDK](https://github.com/skyboooox/KinopioHub/wiki/Cpp-ZH) |
+| [Arduino](https://github.com/skyboooox/KinopioHub.ino) | [ESP32 客户端](https://github.com/skyboooox/KinopioHub/wiki/Arduino-ZH) |
+| [ROS](https://github.com/skyboooox/KinopioHub.ROS) | [ROS 2 桥接](https://github.com/skyboooox/KinopioHub/wiki/ROS-ZH) |
+| [Web](https://github.com/skyboooox/KinopioHub.web) | [控制台](https://github.com/skyboooox/KinopioHub/wiki/Web-ZH) |
+| [Server](https://github.com/skyboooox/Kinopio-server) | [可选 NATS 分支](https://github.com/skyboooox/KinopioHub/wiki/Server-ZH) |
 
-```bash
-just bootstrap
-just status
-just fetch
-just setup js
-just test js
-```
+JS、Python、C++、ESP32 和 ROS 的 v3 重写目前仍是未发布的本地源码，Web 仍使用 v2。现有公开包不包含这些重写；v3 同时更换 API 和消息协议。
 
-使用 VS Code 打开 `KinopioHub.code-workspace`，即可把每个仓库作为独立的源码管理根目录使用。
+## 本仓库
 
-## 文档
+这里是文档与工作区入口。Wiki 正文在 [docs/](docs/wiki-home.md)，可运行的跨项目检查在 `integration/`。各实现分别维护代码、测试和中英文 README。
 
-- [项目起源与血缘关系](docs/origins.md)
-- [架构与仓库边界](docs/architecture.md)
-- [开发工作流](docs/development.md)
-- [兼容性策略](docs/compatibility.md)
-- [集成测试目录](integration/README.md)
-
-## 许可证
-
-本入口仓库使用 GPL-3.0-or-later。`Kinopio-server` 继承 NATS Server 的 Apache-2.0 许可证；各子项目的准确许可证以对应仓库为准。
+工作区恢复、检查和 Wiki 维护见[开发说明](docs/development.zh.md)。欢迎通过 [Issues](https://github.com/skyboooox/KinopioHub/issues) 或对应实现仓库提交小而明确的改进。
