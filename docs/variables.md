@@ -2,7 +2,7 @@
 
 [简体中文](variables.zh.md) · [Home](wiki-home.en.md) · [Networking](networking.md)
 
-This chapter defines the behavior shared by the 3.0.0 SDKs. Language-specific return types and scheduling rules are documented in each SDK reference.
+This chapter defines the behavior shared by the SDKs. Language-specific return types and scheduling rules are documented in each SDK reference.
 
 In this chapter
 
@@ -16,21 +16,60 @@ In this chapter
 <a id="chapter-1"></a>
 ## 1. Names and references
 
-A variable has three names: namespace, scope and variable name. All three must match on communicating devices. The same name in another namespace is a different variable.
+A variable is identified by namespace and variable name. Both must match on communicating devices. The same name in another namespace is a different variable.
 
 ```js
-const hub = new KinopioHub({ namespace: 'workshop' });
-const battery = hub.scope('devices').var('battery');
+const hub = new KinopioHub('workshop');
+const battery = hub.var('battery');
 ```
 
-Use a scope for a device or a related group of values. A reference can be retained and reused throughout the application; creating a reference does not assign a value. Names accept 1–128 UTF-8 bytes without control characters. A slash in a variable name is part of that name, which is why a ROS variable such as `/battery` is valid.
+Keep a reference and reuse it throughout the application. Creating it does not assign a value.
+
+| Naming rule | Requirement |
+| --- | --- |
+| Length | 1–128 well-formed UTF-8 bytes |
+| Excluded characters | U+0000–U+001F and U+007F |
+| Comparison | Case-sensitive; no trimming or Unicode normalization |
+| Slash | Literal content; `/battery` is a valid ROS variable name |
+
+> **Sharing requires an explicit namespace.** Omission creates a new UUID for each Hub, so two default Hubs are isolated.
+
+| Runtime | Read the namespace |
+| --- | --- |
+| JS / Python | `hub.namespace` |
+| C++ / ESP32 | `hub.namespaceName()` |
+
+The namespace stays unchanged for the Hub lifetime. Creating a variable reference never starts a new namespace.
+
+State names are encoded byte by byte as two lowercase hexadecimal digits. Spaces, dots, `*` and `>` remain literal in set/get/watch operations. Message methods have separate [hierarchy and wildcard rules](messaging.md#chapter-2). For namespace `workshop` and variable `battery`:
+
+| Traffic | NATS subject |
+| --- | --- |
+| Variable update | `776f726b73686f70.62617474657279` |
+| Peer query | `_sys.v4.776f726b73686f70.sync` |
+| Query reply | `_sys.v4.776f726b73686f70.inbox.<id>` |
+| SDK report | `_sys.v4.776f726b73686f70.health.<instanceId>` |
+| Python live | `_sys.v4.776f726b73686f70.live.…` |
+
+Updates carry `{name, version: {counter, writer}, deleted, value?}`.
+
+- The record keeps the original name; receivers check it against the encoded subject.
+- Encoded data subjects cannot collide with control subjects.
+- NATS permissions must cover data, queries, replies and health reports.
+
+The [shared encoding vectors](../integration/fixtures/name-vectors.json) list accepted and rejected names.
 
 Namespaces organize data, not permissions. Devices also need a connected NATS topology and compatible authentication. Do not use a namespace as a substitute for NATS account or subject permissions.
 
 <a id="chapter-2"></a>
 ## 2. Values, absence and initial loading
 
-Values use the portable JSON subset: null, booleans, finite numbers, strings, arrays and objects. Integer-valued numbers must fit ±(2^53−1), even in languages with larger native integers. Encode large identifiers as strings. Convert dates and binary data explicitly into an application-defined JSON representation.
+| Data | Portable representation |
+| --- | --- |
+| JSON | Null, booleans, finite numbers, strings, arrays and objects |
+| Integer-valued numbers | Within ±(2^53−1), even when the language supports larger integers |
+| Larger identifiers | Strings |
+| Dates and binary | Explicit application-defined JSON representation |
 
 SDKs validate nesting, complexity and memory limits. A value accepted by a desktop SDK may still exceed the ESP32's smaller limits. Plan the shared schema around the smallest receiving device.
 
@@ -40,17 +79,24 @@ SDKs validate nesting, complexity and memory limits. A value accepted by a deskt
 | No local value | `undefined` | `UNSET` | Empty optional | `exists()` is false |
 | Initial lookup unfinished | `meta.exists === null` | `meta["exists"] is None` | `meta()["exists"]` is null | No equivalent tri-state metadata API |
 
-In JS, Python and C++, `variable.ready()` waits until the local state is known, including known absence. It does not promise that a value exists or that every possible peer has answered. Inspect existence after waiting. ESP32 applications observe values through `loop()` and callbacks; there is no variable `ready()` API.
+| Runtime | Initial lookup |
+| --- | --- |
+| JS / Python / C++ | `variable.ready()` waits for a known local state, including known absence; check existence afterward. |
+| ESP32 | Observe through `loop()` and callbacks; there is no variable `ready()` API. |
+
+> **Ready does not mean present.** It also does not mean every possible peer has answered.
 
 Do not implement initialization as an assumed atomic “read absent, then set.” Two devices can both see absence and write defaults. The normal conflict rule chooses the winner; there is no compare-and-set operation.
 
 <a id="chapter-3"></a>
 ## 3. Reading, writing and observing
 
-Reading returns a local snapshot. Mutating the returned object does not publish it: call `set()` with the changed value. Keeping the reference avoids repeatedly rebuilding application wiring.
+Reads return local copies. Keep the variable reference; call `set()` to publish a changed value.
+
+**ESP32 ownership:** Stored snapshots own nested ArduinoJson strings, including strings linked to caller arrays. Reads return an owned `JsonDocument`. See [value ownership](arduino-api.md#chapter-3).
 
 ```js
-const battery = hub.scope('devices').var('battery');
+const battery = hub.var('battery');
 const stop = battery.watch((value, meta) => {
   if (meta.exists) console.log(value);
 });
@@ -60,13 +106,19 @@ await battery.set(80);
 
 Watches expose initial state and subsequent changes according to the language's scheduling rules. Metadata changes, such as pending publication clearing or connection changes, can also notify a watcher. Treat it as a current-state view, not a durable event stream or a guarantee of exactly one callback per business action.
 
+| Method | Behavior |
+| --- | --- |
+| `get(fallback)` | Local missing-value default; does not replace null/false/zero or start a network lookup |
+| `watchValue(handler)` / Python `watch_value` | Value-only callback with the same watch timing |
+| `pub/sub/req/handle` | Independent message operations; deleting state does not remove subscriptions |
+
 Writes update local RAM. A successful write can occur while offline. Repeated writes of equal JSON still create new logical versions; transport deduplication only removes repetitions of the same version.
 
 | Wait or operation | What success means |
 | --- | --- |
-| Hub `ready()` | Local SDK initialization completed |
+| Hub `ready()` (JS/Python/C++) | Local SDK initialization completed |
 | Variable `ready()` | This local view has an initialization result |
-| Hub `connected()` | The SDK has an active NATS connection |
+| Hub `connected()` (JS/Python/C++) | The SDK has an active NATS connection |
 | `set()` / delete | The local current record was updated |
 | Hub `flush()` | Current records were sent and NATS transport was confirmed |
 | Application result variable | Whatever completion rule the application explicitly implements |
@@ -74,11 +126,27 @@ Writes update local RAM. A successful write can occur while offline. Repeated wr
 <a id="chapter-4"></a>
 ## 4. Concurrent writes and deletion
 
-Each record carries `{counter, writer}`. The counter is a decimal string and is compared numerically. Higher counters win; writer ID order breaks ties. Wall-clock timestamps do not decide the result. Receiving records advances the local logical clock before later writes.
+Each record carries `{counter, writer}`.
 
-This chooses one whole JSON value. Concurrent edits to different properties of one object are not merged property by property. If independent writers own independent fields, use separate variables. If multiple fields must travel as one snapshot, use one object and accept whole-value conflict resolution.
+1. Compare `counter` numerically; it is encoded as a decimal string.
+2. Higher counter wins; writer ID order breaks ties.
+3. Receiving a record advances the local logical clock before later writes.
 
-Deleting creates a versioned tombstone in RAM. It prevents an older value from reappearing during peer synchronization. A later higher-version write can create the value again. Tombstones consume record capacity; deletion is not a way to remove all version metadata or reclaim every slot.
+Wall-clock timestamps do not choose the winner.
+
+**Merging selects a whole JSON value, not individual properties.**
+
+| Data relationship | Model it as |
+| --- | --- |
+| Fields with independent writers | Separate variables |
+| Fields that travel as one snapshot | One object; accept whole-value conflict resolution |
+
+| After deletion | Result |
+| --- | --- |
+| RAM record | A versioned tombstone remains |
+| Older peer value arrives | Cannot restore the deleted value |
+| Later higher-version write | Can create the value again |
+| Capacity | Tombstones still consume record slots; deletion does not reclaim all metadata |
 
 There is no atomic operation spanning several variables. A reader can observe an intermediate state between two writes. Put inseparable fields in one value or define an application-level sequence identifier.
 
@@ -91,7 +159,9 @@ There is no atomic operation spanning several variables. A reader can observe an
 4. Reconnection merges retained current records with online peers.
 5. Exiting the last process holding a record loses that record.
 
-Offline writes do not create a stored operation log. Several changes to the same variable can collapse to its current record before publication. Restarting the broker does not restore SDK data, and keeping only a broker online does not retain variables. Periodic synchronization repairs missed current-state updates while copies remain alive.
+- **Only the current record is kept.** Several offline changes can collapse before publication; there is no operation log.
+- **A broker is not a backup.** Restarting it never restores SDK data, and leaving it online does not retain values.
+- **Living peers repair state.** Periodic synchronization repairs missed updates while copies remain alive.
 
 <a id="chapter-6"></a>
 ## 6. Desired state and commands
@@ -100,6 +170,6 @@ Use variables for current measurements, configuration and desired state. A devic
 
 Use [Python live channels](python-api.md#live) for expiring commands when supported by the receiver. Live sends are separate calls with no offline replay; they still do not prove execution. [ROS controls](ros-config.md#controls) add session checks for desired state and receiver leases for live commands.
 
-Do not use a variable as an event log, an atomic counter or a queue where every intermediate value must be processed. Those guarantees are outside the current SDK.
+Use [events and requests](messaging.md) for transient notifications and application replies. Do not use a current value as an event log or atomic counter. Neither current values nor Core NATS queue groups guarantee that every intermediate operation is processed.
 
 Next: [connection modes and mesh](networking.md), then the API reference for [JS](javascript-api.md), [Python](python-api.md), [C++](cpp-api.md) or [ESP32](arduino-api.md).

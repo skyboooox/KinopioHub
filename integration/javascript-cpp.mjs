@@ -1,3 +1,4 @@
+import { nameConformance } from './name-conformance.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -67,10 +68,12 @@ let broker, js, py, late, third;
 try {
   broker = await startManagedBroker({ host: '127.0.0.1' });
   const namespace = `interop-${randomUUID()}`;
-  js = new KinopioHub({ namespace, servers: [broker.url], mesh: false, discovery: false, healthInterval: 200, peerTimeout: 100 });
+  js = new KinopioHub(namespace, { servers: [broker.url], mesh: false, discovery: false, healthInterval: 200, peerTimeout: 100 });
   py = worker({ namespace, servers: [broker.url], mesh: false, discovery: false, healthInterval: 200, peerTimeout: 100 });
   await Promise.all([js.connected(), py.call('connected')]);
-  const variable = js.scope('devices').var('battery');
+  report.encodingVectors = await nameConformance(js, py.call);
+  passed('Shared UTF-8 vectors round-trip with literal names');
+  const variable = js.var('battery');
   const payload = { '10': 10, '2': 2, '汉字😀': [null, false, 0, 1e-7, 1.25, '🌍'], nested: { z: 2, a: 1 } };
   await variable.set(payload); await js.flush();
   await until(async () => JSON.stringify((await py.call('get')).meta.version) === JSON.stringify(variable.meta.version), 'C++ did not observe JS version');
@@ -99,7 +102,7 @@ try {
   py = worker({ namespace: meshNamespace, token, mesh: { group: meshGroup }, discovery: false });
   const initial = await py.call('connected');
   assert.equal(initial.mesh.role, 'leader');
-  js = new KinopioHub({ namespace: meshNamespace, token, mesh: { group: meshGroup }, discovery: false });
+  js = new KinopioHub(meshNamespace, { token, mesh: { group: meshGroup }, discovery: false });
   await js.connected({ timeout: 30000 });
   await until(async () => {
     const status = await py.call('status');
@@ -109,7 +112,7 @@ try {
   assert.equal(new URL(shared.server).port, new URL(js.status().server).port);
   report.mixedAuthentication = 'token plus HMAC control';
   report.mixedEvidence = { cpp: shared, javascript: js.status() };
-  const mixed = js.scope('devices').var('battery');
+  const mixed = js.var('battery');
   await mixed.set(42); await js.flush();
   await until(async () => (await py.call('get')).value === 42, 'Mixed election did not provide data routing');
   passed('C++ and JS share one elected broker and current variables');
@@ -142,9 +145,9 @@ try {
     return status.mesh.role === 'leader' && status.connection === 'connected';
   }, 'C++ did not take over the JS-owned node', 30000);
   assert.equal((await py.call('get')).value, 42);
-  js = new KinopioHub({ namespace: meshNamespace, token, mesh: { group: meshGroup }, discovery: false });
+  js = new KinopioHub(meshNamespace, { token, mesh: { group: meshGroup }, discovery: false });
   await js.connected({ timeout: 30000 });
-  const restored = js.scope('devices').var('battery');
+  const restored = js.var('battery');
   await until(() => restored.value === 42, 'New JS peer missed state after C++ takeover');
   await until(async () => {
     const status = await py.call('status');

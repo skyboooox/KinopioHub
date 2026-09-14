@@ -15,7 +15,7 @@ const token = process.env.KINOPIO_TOKEN ?? '';
 const user = process.env.KINOPIO_USER ?? '';
 const password = process.env.KINOPIO_PASSWORD ?? '';
 const caCertificate = process.env.KINOPIO_CA_FILE ? readFileSync(process.env.KINOPIO_CA_FILE, 'utf8') : '';
-const options = { namespace, healthInterval: 500, peerTimeout: 500,
+const options = { healthInterval: 500, peerTimeout: 500,
   ...(token ? { token } : {}), ...(user ? { user, pass: password } : {}),
   ...(caCertificate ? { tls: { ca: caCertificate, handshakeFirst: true } } : {}),
   ...(server ? { servers: [server], mesh: false, discovery: false } : { mesh: { group } }),
@@ -33,28 +33,28 @@ let js;
 let stage = "startup", iteration = null, operation = null;
 try {
   await delay(2000);
-  js = new KinopioHub(options);
+  js = new KinopioHub(namespace, options);
   await js.connected({ timeout: 60000 });
   // Filling all record slots also exercises batched late-join snapshot admission.
-  for (let index = 0; index < 128; index++) await js.scope('load').var(`v${index}`).set(index);
+  for (let index = 0; index < 128; index++) await js.var(`v${index}`).set(index);
   await js.flush();
   if (server.startsWith('tls:')) await setTestClock(call);
   await call('configure', { namespace, server, group, token, user, password, caCertificate });
   await until(async () => (await call('status')).connection === 'connected', 'ESP32 not connected');
   await until(async () => (await call('status')).variables === 128, '128-record late snapshot missing');
-  for (let index = 0; index < 128; index++) assert.equal((await call('get', { scope: 'load', name: `v${index}` })).value, index);
+  for (let index = 0; index < 128; index++) assert.equal((await call('get', { name: `v${index}` })).value, index);
   report.resources.snapshot = (await call('status')).resources;
   pass('128 small records arrive through late-join snapshot');
-  const variable = js.scope('load').var('v0');
+  const variable = js.var('v0');
   stage = "alternating updates";
   for (let index = 0; index < writes; index++) {
     iteration = index;
     operation = index % 2 ? "JS set/flush then ESP32 get" : "ESP32 set/flush then JS observe";
     if (index % 2) {
       await variable.set(index); await js.flush();
-      await until(async () => (await call('get', { scope: 'load', name: 'v0' })).value === index, 'JS update missing');
+      await until(async () => (await call('get', { name: 'v0' })).value === index, 'JS update missing');
     } else {
-      assert.equal(await call('set', { scope: 'load', name: 'v0', value: index }), true);
+      assert.equal(await call('set', { name: 'v0', value: index }), true);
       await call('flush');
       await until(() => variable.value === index, 'ESP32 update missing');
     }
@@ -69,8 +69,8 @@ try {
   stage = 'WiFi recovery';
   await call('wifiDisconnect');
   await until(async () => !(await call('wifi')).connected, 'WiFi did not disconnect', 15000);
-  assert.equal(await call('set', { scope: 'load', name: 'v0', value: 'wifi-offline' }), true);
-  assert.equal((await call('get', { scope: 'load', name: 'v0' })).value, 'wifi-offline');
+  assert.equal(await call('set', { name: 'v0', value: 'wifi-offline' }), true);
+  assert.equal((await call('get', { name: 'v0' })).value, 'wifi-offline');
   await assert.rejects(call('flush', { timeoutMs: 50 }));
   await call('wifiReconnect');
   await until(async () => (await call('wifi')).connected, 'WiFi did not reconnect');
@@ -82,18 +82,18 @@ try {
     stage = "broker replacement";
     await js.close(); js = null;
     await until(async () => (await call('status')).connection !== 'connected', 'Old broker remained connected');
-    assert.equal(await call('set', { scope: 'load', name: 'v0', value: 'broker-replacement' }), true);
-    js = new KinopioHub(options);
+    assert.equal(await call('set', { name: 'v0', value: 'broker-replacement' }), true);
+    js = new KinopioHub(namespace, options);
     await js.connected({ timeout: 60000 });
-    const replacement = js.scope('load').var('v0');
+    const replacement = js.var('v0');
     await until(() => replacement.value === 'broker-replacement', 'Replacement broker did not recover ESP32 RAM', 90000);
-    await until(async () => isDeepStrictEqual(replacement.meta.version, (await call('get', { scope: 'load', name: 'v0' })).version), 'Replacement version mismatch');
+    await until(async () => isDeepStrictEqual(replacement.meta.version, (await call('get', { name: 'v0' })).version), 'Replacement version mismatch');
     await until(() => Array.from({ length: 127 }, (_, index) => index + 1)
-      .every(index => js.scope('load').var(`v${index}`).value === index), 'Replacement snapshot is incomplete');
+      .every(index => js.var(`v${index}`).value === index), 'Replacement snapshot is incomplete');
     pass('Broker termination and replacement discovery retain ESP32 state');
   }
   stage = 'persistent capacity warning';
-  assert.equal(await call('set', { scope: 'load', name: 'overflow', value: 1 }), false);
+  assert.equal(await call('set', { name: 'overflow', value: 1 }), false);
   await call('disconnect'); await call('reconnect');
   await until(async () => (await call('status')).connection === 'connected', 'Reconnect after capacity error failed');
   assert.equal((await call('status')).health, 'warning');
@@ -103,11 +103,11 @@ try {
 } catch (error) {
   const diagnostics = { stage, iteration, operation, message: error.message };
   // Observe once after failure; never retry the failed write or flush.
-  for (const [name, op, fields] of [['status', 'status', {}], ['variable', 'get', { scope: 'load', name: 'v0' }]]) {
+  for (const [name, op, fields] of [['status', 'status', {}], ['variable', 'get', { name: 'v0' }]]) {
     try { diagnostics[name] = await call(op, fields); }
     catch (failure) { diagnostics[name] = { diagnosticError: failure.message }; }
   }
-  diagnostics.javascript = js ? { connection: js.status().connection, value: js.scope('load').var('v0').value, meta: js.scope('load').var('v0').meta } : null;
+  diagnostics.javascript = js ? { connection: js.status().connection, value: js.var('v0').value, meta: js.var('v0').meta } : null;
   console.error(JSON.stringify({ failure: diagnostics, completedChecks: report.checks }, null, 2));
   throw error;
 } finally {

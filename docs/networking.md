@@ -29,9 +29,7 @@ One long-lived Hub per application is usually sufficient. Creating separate Hubs
 For JS and C++, option names use camelCase. Python uses snake_case. Timeout units are milliseconds in JS/C++ and seconds in Python.
 
 ```js
-const hub = new KinopioHub({
-  namespace: 'workshop',
-  servers: ['tls://nats.example.com:4222'],
+const hub = new KinopioHub('workshop', { servers: ['tls://nats.example.com:4222'],
   mesh: false,
   discovery: false,
   tls: { handshakeFirst: true },
@@ -41,7 +39,12 @@ await hub.connected();
 
 `servers` is a list of **client** entry points. Alternatives should reach the same logical NATS system. Switching between unrelated brokers does not join them or make their clients exchange records.
 
-TLS-first means the TLS handshake occurs before NATS INFO. INFO-then-TLS is a different server setting: use the matching handshake option. Use `token` or user/password options rather than embedding credentials in URLs. Custom CA or client-certificate settings are transport-specific; consult the SDK reference instead of copying another language's field names.
+| Connection detail | Check |
+| --- | --- |
+| TLS-first | TLS handshake before NATS INFO |
+| INFO-then-TLS | Match the listener's different handshake mode |
+| Credentials | Use `token` or user/password options, not credentials embedded in URLs |
+| Custom CA / client certificate | Use the transport-specific SDK fields; do not copy another language's names |
 
 | Runtime | Direct transport | Notes |
 | --- | --- | --- |
@@ -55,13 +58,27 @@ TLS-first means the TLS handshake occurs before NATS INFO. INFO-then-TLS is a di
 <a id="chapter-3"></a>
 ## 3. Automatic LAN node lifecycle
 
-Constructing a Node/Python/C++ Hub starts automatic mode; importing a package alone does not. Members discover one another over IPv4 multicast and probe reachability. Election takes network quality and host load into account, with repeated checks and a minimum term to reduce unnecessary handoffs.
+1. Creating a Node/Python/C++ Hub enables automatic mode. An import alone starts nothing; Python requires a running asyncio loop.
+2. Members discover peers over IPv4 multicast and probe reachability.
+3. Election compares network quality and host load. Repeated checks and a minimum term reduce unnecessary handoffs.
 
-The elected host starts an ordinary NATS Core child process. Other SDKs use that node. Compatible Hubs share a manager inside a process; a physical host contributes one vote. The domain is intended for small LANs and tracks at most 32 other candidates per manager.
+| Ownership and scale | Behavior |
+| --- | --- |
+| Elected host | Starts a NATS Core child process; other SDKs use it |
+| Same process | Compatible Hubs share a manager |
+| Votes | Grouped by discovered host identity, derived from hostname and network interfaces |
+| Interface visibility | Keep it consistent across processes |
+| Candidate budget | At most 32 other candidates per manager; designed for small LANs |
 
-When the leader disappears, reachable participants can select a replacement. During a partition, different reachable groups may each remain available. After connectivity returns, they converge to one leader; a temporary overlap is allowed. Applications must tolerate connection changes and use their retained RAM state during recovery.
+| Network event | Expected behavior |
+| --- | --- |
+| Leader disappears | Reachable participants select a replacement |
+| Partition | Each reachable group may remain available independently |
+| Connectivity returns | Converge to one leader; temporary overlap is allowed |
 
-The election domain depends on group, authentication and upstream settings. Namespace does not split the node. Devices expecting to share one node must use equivalent domain settings. An ESP32's discovery configuration must match that domain, even though it never votes.
+Applications tolerate connection changes and use retained RAM state during recovery.
+
+> **One domain requires equivalent settings:** group, authentication and upstreams determine the election domain. Namespace does not split a node. ESP32 discovery must match that domain even though the device never votes.
 
 Managed LAN client listeners are plaintext and assume a trusted LAN. For explicit TLS policy, use your own broker in client-only mode. The SDK does not install certificates or change firewalls.
 
@@ -69,7 +86,7 @@ Managed LAN client listeners are plaintext and assume a trusted LAN. For explici
 ## 4. Connect a LAN node to a remote system
 
 ```js
-const hub = new KinopioHub({
+const hub = new KinopioHub('workshop', {
   mesh: {
     group: 'workshop',
     upstreams: ['nats://nats.example.com:7422'],
@@ -79,7 +96,12 @@ const hub = new KinopioHub({
 
 The upstream must expose a real NATS **leaf listener**. A normal client port is not interchangeable with a leaf port. TLS and WSS leaf modes also require matching upstream support. C++ can use WS/WSS here because the managed NATS executable handles the leaf connection.
 
-Use `mesh.upstreamTls` in JS/C++, or `mesh["upstream_tls"]` in Python, for leaf certificates and handshake mode. Its settings belong to the managed broker's upstream connection, not the SDK's direct client TLS connection. Alternatives should belong to one upstream system and use a compatible transport mode.
+| Runtime | Leaf TLS settings |
+| --- | --- |
+| JS / C++ | `mesh.upstreamTls` |
+| Python | `mesh["upstream_tls"]` |
+
+These configure the managed broker's leaf certificates and handshake, not the SDK's direct client TLS. Alternative upstreams must belong to one system and use a compatible transport mode.
 
 The SDK verifies actual leaf connectivity before applying an upstream-connected local node; an open TCP socket alone is insufficient. If no usable path exists, inspect status and errors rather than assuming local and remote variables are synchronized. Listener examples are in the [Server chapter](server.md).
 
@@ -92,18 +114,42 @@ Use `mesh.binary` with an appropriate local executable when automatic download i
 
 `close()` releases SDK resources and its participation in the shared node manager. The SDK manages only processes it started; it does not terminate an externally managed NATS service. Closing the last SDK that holds a value still loses that value, regardless of the broker's lifetime.
 
+Use [drain](messaging.md#chapter-5) when accepted messages and replies must finish before shutdown. Planned node handoffs retire old business interests before activating replacements; pending requests fail without automatic replay. Current variables still merge after reconnection.
+
 <a id="chapter-6"></a>
 ## 6. Read SDK status
 
 | Field group | Meaning |
 | --- | --- |
-| `instanceId`, `name`, `sdk`, `version`, `runtime` | Runtime instance identity; `instanceId` changes on restart |
+| `instanceId`, `namespace`, `sdk`, `version`, `runtime` | Runtime instance identity; `instanceId` changes on restart |
 | `connection`, `server`, `rttMs`, `reconnects` | SDK transport state and observed connection behavior |
-| `variables`, `pendingVariables`, `pendingBytes` | Current record inventory and pending publication |
+| `variables`, `pendingVariables`, `pendingBytes` | Current record inventory and publication awaiting transport confirmation |
 | `sentMessages`, `receivedMessages`, `sentBytes`, `receivedBytes` | SDK protocol traffic; not application-only traffic or network framing |
 | `health`, `currentError`, `lastError` | Current assessment and error information |
 | `mesh.role`, `leaderId`, `members`, `reason`, `upstreamConnected` | Automatic-node state when supported |
+| `messaging` | Message phase, requests, backlog, active handlers and known drops; local status additionally includes limits |
 
-Use local `status()` to inspect the observer itself. Instance reports are normally emitted every five seconds. Remote `online` means recently observed, `offline` means expired, and `unknown` means the observer cannot currently judge because it is disconnected. `fresh` and `lastSeen` help interpret the observation; reports are not permanent device registration records.
+Use local `status()` to inspect the observer itself. Reports are normally emitted **every five seconds**.
+
+| Observation | Meaning |
+| --- | --- |
+| `online` | Report observed recently |
+| `offline` | Report expired |
+| `unknown` | Observer disconnected; cannot judge |
+| `fresh`, `lastSeen` | Context for the observation |
+
+Reports are not permanent device registration records.
+
+| ESP32 view | Contents |
+| --- | --- |
+| Local message status | Backlog, active requests/handlers, drops and errors |
+| Remote heartbeat | Identity, SDK/version, connection, health and any current error |
+| Other instances | No subscription or cache; use JS/Python/C++ to build the online-device view |
+
+- Remote **`messaging`** is smaller than local status; ESP32 omits it.
+- Top-level **`pendingVariables` / `pendingBytes`** describe current-state transport; message backlog is separate.
+- **Missing means unreported, not zero.** Unknown native or network loss cannot be read as zero loss.
+
+A remote value can already be visible while its sender still awaits a transport confirmation. Read `pendingVariables` and error fields together; `connection: connected` alone is not evidence that every flush completed.
 
 SDK health does not measure battery, temperature, robot controller readiness or completion of a command. Publish such business information as variables. A dashboard should show observer connection status alongside device reports so a disconnected dashboard does not imply every device is powered off.

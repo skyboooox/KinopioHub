@@ -2,7 +2,12 @@
 
 [简体中文](development.zh.md) · [Home](wiki-home.en.md)
 
-Keep changes small: reproduce a problem, change the owning project, run its relevant checks, and update both README languages or the Wiki page when behavior changes. Open cross-project questions in KinopioHub; implementation issues belong in the SDK repository.
+**Small, focused contributions are welcome.** Reproduce the problem, change the owning project, run relevant checks and update both documentation languages.
+
+| Question | Where to ask |
+| --- | --- |
+| Cross-project behavior or documentation | KinopioHub |
+| SDK implementation | That SDK repository |
 
 In this chapter
 
@@ -11,6 +16,7 @@ In this chapter
 - [ESP32 hardware](#chapter-3)
 - [ROS Docker](#chapter-4)
 - [GitHub Wiki](#chapter-5)
+- [Publishing](#chapter-6)
 
 <a id="chapter-1"></a>
 ## Workspace
@@ -24,7 +30,15 @@ node scripts/workspace.mjs setup js
 node scripts/workspace.mjs test js
 ```
 
-The manager uses Node built-ins, with no npm setup. Repository IDs are `js`, `python`, `cpp`, `arduino`, `ros`, `web`, `server`; each needs its own toolchain. The command list lives in [repositories.json](../repositories.json). `bootstrap` clones missing projects; `fetch` fetches remotes; `pull` only fast-forwards clean checkouts. Server upstream merging is a separate review step. Commit and push each repository separately.
+The manager uses Node built-ins, with no npm setup. Each project needs its own toolchain. IDs: `js`, `python`, `cpp`, `arduino`, `ros`, `web`, `server`.
+
+| Command | Effect |
+| --- | --- |
+| `bootstrap` | Clone missing projects |
+| `fetch` | Fetch remotes |
+| `pull` | Fast-forward clean checkouts only |
+
+See [repositories.json](../repositories.json) for the command list. Review Server upstream merges separately; commit and push each repository independently.
 
 <a id="chapter-2"></a>
 ## Check the changed project
@@ -47,27 +61,74 @@ After installing JS/Python and building C++ test targets, run cross-language che
 
 ```sh
 node integration/javascript-python.mjs
+node integration/messaging.mjs
 node integration/javascript-cpp.mjs
 node integration/discovery-clients.mjs
 ```
 
-These cover values, versions, deletion, late join, reports and shared-node takeover; the discovery runner checks non-voting clients. `KINOPIO_PYTHON` and `KINOPIO_CPP` override the sibling Python environment and built C++ worker. Avoid overlapping LAN-election tests on the discovery port. Record exact source versions, dirty state, environment and failures; do not treat an old successful run as current acceptance.
+These cover values, versions, deletion, late join, reports and shared-node takeover; the discovery runner checks non-voting clients. `KINOPIO_PYTHON` and `KINOPIO_CPP` override the sibling Python environment and built C++ worker. Run LAN-election checks one at a time because they share the discovery port.
+
+### Message interoperability
+
+| Runner | Coverage |
+| --- | --- |
+| `integration/messaging.mjs` | Shared encoding, bidirectional events/requests/Headers, response collection, mixed-language queues, health and cleanup; temporary local broker |
+| `node integration/messaging-matrix.mjs` | Adds real Chromium and a temporary authenticated TLS broker; requires OpenSSL |
+
+| Environment | Selects |
+| --- | --- |
+| `KINOPIO_CPP_WORKER` | C++ `messaging-worker` executable |
+| `KINOPIO_SERIAL` | ESP32 serial port |
+| `KINOPIO_TEST_HOST` | Host IPv4 reachable from ESP32 |
+
+The selected Python needs the sibling SDK and pyserial.
+
+The matrix respects ESP32's basic API: exact-name subscriptions and single-response calls, JSON delivery from messages carrying desktop Headers, and the device as a gather responder and queue-service caller. Full Headers, wildcard, collection and queue-worker checks run on JS, Python and C++.
 
 <a id="esp32-hardware"></a>
 <a id="chapter-3"></a>
 ## ESP32 hardware
 
-Flash `KinopioHub.ino/test/firmware/firmware.ino` with a private `KinopioTestConfig.h` defining `KINOPIO_WIFI_SSID` and `KINOPIO_WIFI_PASSWORD`. Keep the header outside tracked source and supply its directory through an include path. From the Arduino repository:
+1. Use `KinopioHub.ino/test/firmware/firmware.ino`. Define `KINOPIO_WIFI_SSID` and `KINOPIO_WIFI_PASSWORD` in a private `KinopioTestConfig.h`.
+2. Copy the SDK's `platformio.ini` to an ignored test configuration. Point `src_dir` at the firmware and add the header directory to `build_flags`. Use absolute paths for an external configuration.
+3. Check built size against the application partition, then upload from the Arduino repository.
+
+> **Test partition:** If extra instrumentation exceeds capacity, the private fixture can use `board_build.partitions = huge_app.csv`. This layout has no OTA slot. Ordinary examples retain the default application partition.
 
 ```sh
-PLATFORMIO_SRC_DIR=test/firmware \
-PLATFORMIO_BUILD_FLAGS='-std=gnu++17 -I/absolute/path/to/private-config' \
-pio run -t upload
+pio run -c /absolute/path/to/private-test.ini -t upload
 ```
 
-Close other serial monitors. From `KinopioHub`, set `KINOPIO_SERIAL` to the intended ESP32 port and `KINOPIO_PYTHON` to a Python with pyserial, then run `node integration/javascript-arduino.mjs`. With no `KINOPIO_SERVER`, it starts a LAN node; an explicit server selects a reachable broker. TLS requires `KINOPIO_CA_FILE`; optional authentication uses `KINOPIO_TOKEN` or `KINOPIO_USER` / `KINOPIO_PASSWORD`. `KINOPIO_GROUP` selects the discovery domain.
+Close other serial monitors. From `KinopioHub`, run `node integration/javascript-arduino.mjs` with:
 
-Additional runners under `integration/` are `arduino-offline.mjs`, `arduino-recovery.mjs`, `arduino-flush.mjs`, `arduino-repair.mjs`, `arduino-stalls.mjs` and `arduino-tls-negative.mjs`. LAN fixtures need `KINOPIO_TEST_HOST`, a host IPv4 reachable by the board; stalls also need the CA file. TLS-negative checks use OpenSSL. Run separately: these tests can reconfigure or reboot the board. Measure flash, static RAM, free/minimum heap and workload together.
+| Environment | Purpose |
+| --- | --- |
+| `KINOPIO_SERIAL` | Intended ESP32 port |
+| `KINOPIO_PYTHON` | Python with pyserial |
+| `KINOPIO_SERVER` | Reachable broker; omit to start a LAN node |
+| `KINOPIO_CA_FILE` | Required for TLS |
+| `KINOPIO_TOKEN` or `KINOPIO_USER` / `KINOPIO_PASSWORD` | Optional authentication |
+| `KINOPIO_GROUP` | Discovery domain |
+
+<details>
+<summary>Additional device checks</summary>
+
+All runners live under `integration/`:
+
+| Area | Runner |
+| --- | --- |
+| Offline, recovery and namespaces | `arduino-offline.mjs`, `arduino-recovery.mjs`, `arduino-namespace.mjs` |
+| Transport and repair | `arduino-flush.mjs`, `arduino-repair.mjs`, `arduino-stalls.mjs` |
+| TLS failures | `arduino-tls-negative.mjs` |
+| Messaging lifecycle | `messaging-arduino-lifecycle.mjs` |
+
+The lifecycle runner uses a temporary TLS broker for snapshot ownership, deferred replies, bounded overload, cancellation and Wi-Fi recovery.
+
+LAN fixtures need an ESP32-reachable `KINOPIO_TEST_HOST`; stalls also need a CA file. TLS checks use OpenSSL.
+
+</details>
+
+> **Run device checks separately:** They can reconfigure or reboot the board. Measure flash, static RAM, free/minimum heap and the application workload together.
 
 <a id="ros-docker"></a>
 <a id="chapter-4"></a>
@@ -82,16 +143,34 @@ KINOPIO_DOCKER_PLATFORM=linux/arm64 node docker/check.mjs build humble
 KINOPIO_DOCKER_PLATFORM=linux/arm64 node docker/check.mjs test humble
 ```
 
-Omit `humble` for all configured distributions; repeat with `linux/amd64` for that architecture. Cross-architecture execution needs Docker emulation. Each run isolates real ROS, bridge and controller processes and uses TLS NATS, including a broker restart. Certificates are temporary fixtures; `KINOPIO_TLS_DIR` overrides their directory.
+| Choice | Configuration |
+| --- | --- |
+| All configured distributions | Omit `humble` |
+| amd64 | Repeat with `linux/amd64` |
+| Cross-architecture execution | Requires Docker emulation |
+| Certificate location | Temporary fixtures; override with `KINOPIO_TLS_DIR` |
 
-For a trusted remote server, provide `KINOPIO_SERVER`, `KINOPIO_CA_FILE` and optional `KINOPIO_TEST_TOKEN`, then use `node docker/check.mjs test humble --remote`. Remote mode skips local certificate-negative and broker-restart cases. A declared matrix is not proof of passing tests; distinguish native hardware from emulation.
+Each run isolates real ROS, bridge and controller processes and uses TLS NATS, including broker restart.
+
+For a trusted remote server, provide `KINOPIO_SERVER`, `KINOPIO_CA_FILE` and optional `KINOPIO_TEST_TOKEN`, then use `node docker/check.mjs test humble --remote`. Remote mode skips local certificate-negative and broker-restart cases. The configured matrix describes target environments; distinguish native hardware from emulation when interpreting coverage.
 
 <a id="chapter-5"></a>
+<a id="github-wiki"></a>
 ## GitHub Wiki
 
 All public guide bodies live in `KinopioHub/docs/`. Each project keeps only `README.md` and `README_CN.md` as reader documentation; licenses, third-party notices, agent instructions and GitHub templates retain their own roles. Examples and test code stay with their projects.
 
-Edit the English `.md` and Chinese `.zh.md` pages together. The two home sources are `wiki-home.en.md` and `wiki-home.md`; `wiki-sidebar.md` supplies navigation. Run from `KinopioHub`:
+Edit both languages together:
+
+| Source | Generated Wiki page |
+| --- | --- |
+| English `.md` / Chinese `.zh.md` | Matching guide pair |
+| `wiki-home.en.md` | `Home` — default English entry |
+| `wiki-home.md` | `Home-ZH` |
+| `wiki-sidebar.md` | English-first navigation with Chinese links |
+| Generated compatibility entry | `Home-EN` keeps older links working |
+
+Run from `KinopioHub`:
 
 ```sh
 node --test scripts/workspace.test.mjs scripts/wiki.test.mjs
@@ -115,7 +194,7 @@ node scripts/wiki.mjs check --output .wiki/checkout
 git -C .wiki/checkout diff
 ```
 
-The generator updates marked pages and removes explicitly retired generated pages; it refuses unmarked collisions. Review new files with `git status` too. Publish only after review and authorization:
+The generator updates marked pages and removes explicitly retired generated pages; it refuses unmarked collisions. Review new files with `git status` too. Review the generated diff before publishing:
 
 ```sh
 git -C .wiki/checkout add -A -- '*.md'
@@ -124,3 +203,24 @@ git -C .wiki/checkout push
 ```
 
 Commit portal sources separately. Publishing a Wiki does not publish SDK code or packages. Keep real test endpoints, credentials and experiment logs in the private development workspace.
+
+<a id="chapter-6"></a>
+## Publishing
+
+Build each repository’s artifacts from the commit named by its release tag. Check version metadata, licenses, packaged files and documented examples before publishing. Track unresolved defects and validation gaps in the maintainer TODO; user manuals describe supported behavior and relevant limits.
+
+| Project | Artifact and installation check |
+| --- | --- |
+| JavaScript | Inspect `npm pack --dry-run`, run `npm run test:package`, then install the built tarball in a clean consumer and run an example. |
+| Python | Build wheel and source archive with `uv build`; install the wheel in a clean environment and run the documented asyncio example. |
+| C++ | Verify a CMake install in a temporary prefix and a consumer using `find_package(KinopioHub CONFIG REQUIRED)`. |
+| ESP32 | Build from the packaged library with its pinned dependencies; inspect contents for private headers and run the relevant device checks. |
+| ROS | Build its wheel/source archive and validate the example YAML and selected Docker targets with the matching Python SDK. |
+| Server | Build and test the fork separately; its version and upstream base are distinct from the SDKs' pinned automatic-node binary. |
+
+1. Publish Python before ROS (`kinopio-hub==3.0.0`).
+2. Publish JavaScript before building and deploying Web with that dependency.
+3. Verify registry or release-attachment installation after upload. Source-checkout success does not verify the distributed artifact.
+4. Upgrade participating SDKs together to protocol 4 using the [migration guide](troubleshooting.md#chapter-6).
+
+Publish the portal sources and generated Wiki after the reviewed SDK instructions and artifacts agree. Tags, GitHub releases, package registries and the separate Wiki repository are distinct publication steps; check each result. Never include private endpoints, credentials, device test headers or internal experiment output in an artifact.

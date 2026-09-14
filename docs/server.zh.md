@@ -2,7 +2,9 @@
 
 [English](server.md) · [首页](wiki-home.md) · [源码](https://github.com/skyboooox/Kinopio-server)
 
-v3 SDK 使用普通 NATS Core 即可。`Kinopio-server` 是 [nats-io/nats-server](https://github.com/nats-io/nats-server) 的可选分支，用于更严格的订阅策略，不是变量存储或必须部署的状态服务。
+**Kinopio-server 是可选组件。** SDK 可以使用普通 NATS Core，变量保存在 SDK RAM。
+
+它基于 [nats-io/nats-server](https://github.com/nats-io/nats-server)，增加更严格的订阅策略；不提供变量存储、状态服务或历史服务。
 
 本章目录
 
@@ -28,7 +30,16 @@ authorization {
 | `>` / `*` / `*.battery` | 拒绝 |
 | `devices.>` / `devices.*` / `devices.battery` | 此规则允许，仍需通过普通权限检查 |
 
-该选项默认 false，作用于客户端订阅，不改变 NATS 通配符语法，也不能替代鉴权和 subject 权限。v3 已有前缀的 subject 不依赖此分支。运行中修改策略应通过受控重启应用；目前不声明这个自定义选项支持热重载。
+| 选项行为 | 规则 |
+| --- | --- |
+| 默认值 | `false` |
+| 范围 | 客户端订阅 |
+| 应用修改 | 重启服务 |
+| 权限 | 仍遵守普通 NATS 认证与主题权限 |
+
+它不修改通配符语法；带前缀的 SDK 主题不依赖此 fork。
+
+SDK 的消息模式保留固定的 `_msg.v1` 前缀，回复使用 `_INBOX`，因此 `hub.var('sensor.*').sub(...)` 等接口可以与该规则共用。仍需单独配置对应的发布、订阅与回复权限，队列组不会绕过权限。
 
 <a id="chapter-2"></a>
 ## 构建与运行
@@ -41,12 +52,12 @@ go build -o nats-server .
 ./nats-server -c nats.conf
 ```
 
-先根据示例创建 `nats.conf`。当前源码跟随上游 `main`，使用 Kinopio 项目版本 `3.0.0`，上游基线为 `2.15.0-dev`；此项目版本不是上游 NATS 发行版本号，也不同于 SDK 自动节点固定使用的稳定版执行文件。
+启动可访问的 server 前，先创建并检查 `nats.conf`。此分支不同于 SDK 自动节点使用的固定可执行文件。
 
 <a id="chapter-3"></a>
 ## 客户端与 leaf 监听
 
-仅在本机实验时，普通 NATS 可以设置独立入口：
+仅在本机实验时，配置独立入口：
 
 ```conf
 host: 127.0.0.1
@@ -55,14 +66,30 @@ leafnodes { host: 127.0.0.1; port: 7422 }
 websocket { host: 127.0.0.1; port: 9222; no_tls: true }
 ```
 
-客户端使用 `nats://127.0.0.1:4222` 或 `ws://127.0.0.1:9222`；SDK 托管的 leaf 可设置 `mesh.upstreams: ['nats://127.0.0.1:7422']`。回环地址只允许本机访问。远程部署需要合适的监听地址、鉴权和受信任的 TLS；WebSocket leaf 还要求该入口支持 leaf 协议。
+| 连接 | 本机入口 |
+| --- | --- |
+| 浏览器客户端 | `ws://127.0.0.1:9222` |
+| 原生客户端 | `nats://127.0.0.1:4222` |
+| 托管 leaf | `mesh.upstreams: ['nats://127.0.0.1:7422']` |
 
-完整部署选项见 [NATS 官方配置指南](https://docs.nats.io/running-a-nats-service/configuration)与 [leaf-node 指南](https://docs.nats.io/running-a-nats-service/configuration/leafnodes)。不能由客户端连接成功推断该端口也支持 leaf。
+> **仅限本机的示例：** 这些监听不能从其他设备访问。客户端 URL 不能证明该端口接受 leaf 连接。
+
+ESP32 与 ROS 使用 TCP/TLS，不使用 WS/WSS。远端部署须明确绑定地址、认证与可信 TLS。
+
+完整部署选项见 [NATS 官方配置指南](https://docs.nats.io/running-a-nats-service/configuration)与 [leaf-node 指南](https://docs.nats.io/running-a-nats-service/configuration/leafnodes)。
 
 <a id="chapter-4"></a>
 ## 维护分支
 
-`origin` 是 Kinopio 分支，`upstream` 是 NATS。先获取并审查上游，再合并。保留通配符选项及测试、Kinopio 项目版本、发布目标和手动工作流触发方式。上游修改打包时，也要保留定制发布镜像依赖的配置文件。
+`origin` 是 Kinopio 分支，`upstream` 是 NATS。先获取并审查上游修改，再合并。保留通配符选项及测试、发布目标和手动工作流触发方式；上游修改打包时，一并审查分支的 release Dockerfile 配置。
+
+| 发布字段 | 格式 |
+| --- | --- |
+| 二进制版本 | `<已合入的上游版本>+kinopio.<修订号>` |
+| Git 标签 | 二进制版本前加 `v` |
+| Docker 标签 | 将 Git 标签中的 `+` 替换为 `-` |
+
+保留上游的 `dev`、`RC` 等预发布标识。Kinopio 后缀用于区分分支构建，不改变 [SemVer 版本优先级](https://semver.org/#spec-item-10)；SDK 版本及其固定的 NATS 执行文件分别维护。
 
 针对性检查：
 
@@ -70,8 +97,4 @@ websocket { host: 127.0.0.1; port: 9222; no_tls: true }
 go test ./server -run 'Test.*FirstWildcard|TestQueueSubscribePermissions|TestClientSubscribeDenyWildcardOverlapBlocksDelivery' -count=1
 ```
 
-更广检查使用 `go vet ./...`、`go test ./...` 和上游 CI 测试分组。部分测试会在工作目录写临时文件或使用 syslog，应使用可写的临时源码副本。发布配置为 `.goreleaser.yml` 和 `docker/Dockerfile.release`。
-
-贡献说明应包含具体改动和验证，并使用签署提交（`git commit -s`）。分支保留上游 Apache-2.0 许可证与第三方声明，见仓库的 `LICENSE` 和 `DEPENDENCIES.md`。上游设计资料仍在 [nats-architecture-and-design](https://github.com/nats-io/nats-architecture-and-design)。
-
-Windows 证书存储测试的维护步骤见[上游 PKCS12 fixture 说明](https://github.com/nats-io/nats-server/blob/622457b6dfd5649fdc882cacb287528424762948/test/configs/certs/tlsauth/certstore/pkcs12.md)。通用 MQTT 行为仍参考 [NATS 官方 MQTT 指南](https://docs.nats.io/running-a-nats-service/configuration/mqtt)。
+更广检查使用 `go vet ./...`、`go test ./...` 和上游 CI 测试分组。部分测试写临时文件或需要 syslog，应使用可写的临时检出。分支保留上游 Apache-2.0 许可证与第三方声明，见 `LICENSE` 和 `DEPENDENCIES.md`。

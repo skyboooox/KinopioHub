@@ -14,7 +14,7 @@ export function serialWorker(port = process.env.KINOPIO_SERIAL, python = process
     const entry = pending.get(response.id);
     if (!entry) return;
     clearTimeout(entry.timer); pending.delete(response.id);
-    response.error ? entry.reject(Error(response.error)) : entry.resolve(response.result);
+    response.error ? entry.reject(Object.assign(Error(response.error), { code: response.error, partialReplies: response.partialReplies ?? [] })) : entry.resolve(response.result);
   });
   function failPending(error) {
     stopped = true;

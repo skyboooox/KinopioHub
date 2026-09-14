@@ -1,3 +1,4 @@
+import { nameConformance } from './name-conformance.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
@@ -23,13 +24,13 @@ const user = process.env.KINOPIO_USER ?? '';
 const password = process.env.KINOPIO_PASSWORD ?? '';
 const credentials = { token, user, password, caCertificate };
 const group = process.env.KINOPIO_GROUP ?? 'default';
-const options = { namespace, ...(token ? { token } : {}), ...(user ? { user, pass: password } : {}), ...(caCertificate ? { tls: { ca: caCertificate, handshakeFirst: true } } : {}), healthInterval: 500, peerTimeout: 500, ...(server ? { servers: [server], mesh: false, discovery: false } : { mesh: { group } }) };
+const options = { ...(token ? { token } : {}), ...(user ? { user, pass: password } : {}), ...(caCertificate ? { tls: { ca: caCertificate, handshakeFirst: true } } : {}), healthInterval: 500, peerTimeout: 500, ...(server ? { servers: [server], mesh: false, discovery: false } : { mesh: { group } }) };
 let js;
 try {
   await delay(2000);
-  js = new KinopioHub(options);
+  js = new KinopioHub(namespace, options);
   await js.connected({ timeout: 60000 });
-  const variable = js.scope('devices').var('battery');
+  const variable = js.var('battery');
   report.initialResources = (await call('wifi')).resources;
   const payload = { '汉字😀': [null, false, 0, 1e-7, 1.2345678901234567, 5e-324, 2.2250738585072014e-308, '🌍'], nested: { a: 1, z: 2 } };
   await variable.set(payload); await js.flush();
@@ -64,6 +65,8 @@ try {
   pass('Concurrent offline equal-clock writes converge by writer ordering');
   await until(async () => (await js.instances.list()).some(row => row.sdk === 'arduino' && row.online === 'online'), 'ESP32 SDK health report missing');
   pass('JS observes ESP32 SDK health');
+  report.encodingVectors = await nameConformance(js, call);
+  pass('Shared UTF-8 vectors round-trip with literal ESP32 names');
   report.connectedResources = (await call('status')).resources;
   if (!server) pass('ESP32 discovers LAN broker as client');
   await js.close(); js = null;

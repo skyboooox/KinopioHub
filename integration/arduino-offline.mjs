@@ -29,7 +29,7 @@ try {
  await assert.rejects(device.call('flush',{timeoutMs:50}));
  pass('Offline flush does not falsely succeed');
  const handles=await device.call('handles');
- assert.deepEqual(handles,{initialSet:true,expiredExists:false,expiredSet:false,expiredScopeSet:false,callbackInvoked:true,callbackClosed:true});
+ assert.deepEqual(handles,{initialSet:true,expiredExists:false,expiredSet:false,expiredCopySet:false,callbackInvoked:true,callbackClosed:true});
  pass('Expired handles stay safe and callback can close Hub');
  await device.call('configure',{namespace:'esp32-budget',server:'nats://127.0.0.1:4222',maxMemoryBytes:8192});
  let stored=0;

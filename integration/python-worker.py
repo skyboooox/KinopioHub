@@ -24,7 +24,7 @@ async def main():
                     print(json.dumps({"id": request["id"], "result": None}), flush=True)
                     break
                 else:
-                    variable = hub.scope(request.get("scope", "devices")).var(request.get("name", "battery"))
+                    variable = hub.var(request.get("name", "battery"))
                     if operation == "set":
                         await variable.set(request["value"])
                         await hub.flush(timeout=10)

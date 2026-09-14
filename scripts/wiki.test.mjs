@@ -20,13 +20,13 @@ test('mapped pages, anchors, reference links, and assets rewrite while code rema
   const root = await fixture(t);
   const code = '```md\n[example](../../private.md)\n```\n~~~\n[example](missing.md)\n~~~';
   await fs.writeFile(path.join(root, 'docs/wiki-home.md'), `[SDK](javascript.md#basic-api)\n[manifest](../repositories.json)\n[ref]: architecture.md "Architecture"\n[external](https://example.com/a)\n[local](#page)\n\`[inline](missing.md)\`\n${code}\n`);
-  const rendered = await renderPages(root), home = rendered.get('Home.md');
+  const rendered = await renderPages(root), home = rendered.get('Home-ZH.md');
   assert.match(home, /wiki\/JavaScript#basic-api/);
   assert.match(home, /blob\/main\/repositories.json/);
   assert.match(home, /\[ref\]: https:\/\/github.com\/skyboooox\/KinopioHub\/wiki\/Architecture "Architecture"/);
   assert.ok(home.includes(code)); assert.ok(home.includes('`[inline](missing.md)`'));
   assert.ok(home.includes('[local](#page)')); assert.ok(home.includes('[external](https://example.com/a)'));
-  assert.equal(rendered.size, Object.keys(pages).length + 1);
+  assert.equal(rendered.size, Object.keys(pages).length + 2);
   assert.deepEqual(await renderPages(root), rendered);
 });
 
@@ -63,9 +63,9 @@ test('output refuses user-authored files or symlinks without partial writes', as
 
 test('both languages map to stable distinct Wiki destinations with language switches', async t => {
   const root = await fixture(t);
-  const topics = ['JavaScript', 'Python', 'Cpp', 'Arduino', 'ROS', 'Web', 'Server', 'Architecture', 'Development', 'Variables', 'Networking', 'Troubleshooting', 'JavaScript-API', 'Python-API', 'Cpp-API', 'Arduino-API', 'ROS-Config'];
-  assert.equal(pages['docs/wiki-home.md'], 'Home.md');
-  assert.equal(pages['docs/wiki-home.en.md'], 'Home-EN.md');
+  const topics = ['JavaScript', 'Python', 'Cpp', 'Arduino', 'ROS', 'Web', 'Server', 'Architecture', 'Development', 'Variables', 'Messaging', 'Networking', 'Troubleshooting', 'JavaScript-API', 'Python-API', 'Cpp-API', 'Arduino-API', 'ROS-Config'];
+  assert.equal(pages['docs/wiki-home.md'], 'Home-ZH.md');
+  assert.equal(pages['docs/wiki-home.en.md'], 'Home.md');
   assert.equal(new Set(Object.values(pages)).size, Object.keys(pages).length);
   for (const topic of topics) {
     const source = `docs/${topic.toLowerCase()}.md`;
@@ -82,8 +82,10 @@ test('both languages map to stable distinct Wiki destinations with language swit
     assert.ok(rendered.get(`${topic}.md`).includes(`/wiki/${topic}-ZH#usage`));
     assert.ok(rendered.get(`${topic}-ZH.md`).includes(`/wiki/${topic}#usage`));
   }
-  assert.ok(rendered.get('Home.md').includes('/wiki/Home-EN'));
+  assert.ok(rendered.get('Home.md').includes('/wiki/Home-ZH'));
+  assert.ok(rendered.get('Home-ZH.md').includes('/wiki/Home)'));
   assert.ok(rendered.get('Home-EN.md').includes('/wiki/Home)'));
+  assert.ok(rendered.get('_Footer.md').indexOf('[Home]') < rendered.get('_Footer.md').indexOf('[简体中文]'));
   assert.ok(rendered.get('_Footer.md').includes('/wiki/Development-ZH#github-wiki'));
   assert.ok(rendered.get('_Footer.md').includes('/wiki/Development#github-wiki'));
 });
@@ -92,7 +94,7 @@ test('only explicitly allowlisted sources become Wiki pages', async t => {
   const root = await fixture(t);
   await fs.writeFile(path.join(root, 'docs/private.md'), '# Private scratch document');
   const rendered = await renderPages(root);
-  assert.equal(rendered.size, Object.keys(pages).length + 1);
+  assert.equal(rendered.size, Object.keys(pages).length + 2);
   assert.ok(![...rendered.values()].some(content => content.includes('Private scratch document')));
 });
 

@@ -1,62 +1,67 @@
 # KinopioHub
 
-Project versions, except Web, are unified at **3.0.0**, not yet released. Web is excluded from this version update and still depends on the 2.x SDK. Third-party dependencies keep their own versions.
+[简体中文](wiki-home.md) · [GitHub](https://github.com/skyboooox/KinopioHub) · [Get started](javascript.md) · [API](javascript-api.md)
 
-[简体中文](wiki-home.md) · [GitHub](https://github.com/skyboooox/KinopioHub)
+**Share variables, send events and request responses across languages and devices.**
 
-Share a current value across languages and devices through a familiar variable reference.
+One familiar reference: `hub.var(name)`. Built on NATS Core, with automatic LAN nodes and SDK status reports. Personally maintained.
 
 ```js
-const battery = hub.scope('devices').var('battery');
+import KinopioHub from 'kinopio-hub';
+
+const hub = new KinopioHub('workshop');
+const battery = hub.var('battery');
 battery.watch(value => console.log(value));
 await battery.set(80);
 ```
 
-KinopioHub is a personally maintained cloud-variable project. SDKs keep values in memory and synchronize them with online devices through NATS Core. Node.js, Python and C++ can discover, elect and start a LAN node automatically; browsers and ESP32 connect as clients.
+> **Data lifetime:** Values live in SDK memory. Online peers synchronize them; after the last copy exits, the values are gone.
 
 ## Choose your platform
 
-| Project | Use | Current status |
-| --- | --- | --- |
-| [JavaScript](javascript.md) | Node.js and browsers | v3 source rewrite |
-| [Python](python.md) | asyncio applications | v3 source rewrite |
-| [C++](cpp.md) | Native C++20 applications | v3 source rewrite |
-| [ESP32 Arduino](arduino.md) | Embedded clients | v3 source rewrite |
-| [ROS 2](ros.md) | YAML-selected topics and reverse controls | v3 source rewrite |
-| [Web](web.md) | Subject debugging console | Still uses v2; migration pending |
-| [Server](server.md) | Optional NATS wildcard policy | Customized upstream fork |
-
-These v3 rewrites are unpublished. Use a local checkout containing the rewritten source; installing an existing public package does not obtain it. v3 is incompatible with the old API and wire protocol. Python live channels do not yet have equivalent JS, C++ or ESP32 APIs.
+| Platform | Use | Start | Reference |
+| --- | --- | --- | --- |
+| JavaScript | Node.js and browsers | [Quick start](javascript.md) | [API](javascript-api.md) |
+| Python | asyncio applications | [Quick start](python.md) | [API](python-api.md) |
+| C++ | Native C++20 applications | [Quick start](cpp.md) | [API](cpp-api.md) |
+| ESP32 | Arduino client | [Quick start](arduino.md) | [API](arduino-api.md) |
+| ROS 2 | YAML-selected topics and controls | [Quick start](ros.md) | [Configuration](ros-config.md) |
+| Web | Browser console | [Guide](web.md) | [Browser SDK](javascript-api.md) |
+| Server | Optional NATS wildcard policy | [Guide](server.md) | [Topology](networking.md) |
 
 ## Manual chapters and reading order
 
-Start with your language's quick start and run two instances, then read variable semantics and connection modes. Use the API/configuration chapters while developing and troubleshooting when something fails.
+**New here?** Follow your platform's quick start and run two instances with the same namespace. Then choose the chapter for your task:
 
-1. [Variables and synchronization](variables.md): naming, JSON, reading/writing/watching, concurrent winners, deletion and offline lifetime.
-2. [Connections, mesh and SDK status](networking.md): direct clients, automatic nodes, leaf upstreams, report fields and online observations.
-3. Language manuals:
+| I want to… | Read |
+| --- | --- |
+| Read, write or watch a current value | [Variables and synchronization](variables.md) |
+| Publish events, call a handler or collect replies | [Events and requests](messaging.md) |
+| Connect devices, use mesh or observe SDK status | [Networking](networking.md) |
+| Diagnose a failure or migrate an old client | [Troubleshooting and migration](troubleshooting.md) |
+| Understand the design | [How it works](architecture.md) |
+| Build, test, contribute or publish | [Development](development.md) |
 
-| SDK | Getting started | Reference |
-| --- | --- | --- |
-| JavaScript | [Quick start](javascript.md) | [API and configuration](javascript-api.md) |
-| Python | [Quick start](python.md) | [API and configuration](python-api.md) |
-| C++ | [Quick start](cpp.md) | [API and configuration](cpp-api.md) |
-| ESP32 | [Quick start](arduino.md) | [API and configuration](arduino-api.md) |
-| ROS 2 | [Quick start](ros.md) | [API and configuration](ros-config.md) |
-
-4. [Troubleshooting and migration](troubleshooting.md): connections, TLS, capacity, callbacks and old versions.
-5. [Server](server.md) and [Development](development.md): broker configuration, source builds, interoperability/device checks and Wiki maintenance.
-
-Each chapter has a local table of contents and a matching translation. API fragments assume the Hub, imports and runtime described in that chapter; complete entry-point examples are in each language's quick start.
+Each guide has an English and Chinese version. Quick starts contain complete entry points; API snippets assume the imports and Hub described in their chapter.
 
 ## Three things to know
 
-- **Only current values are shared.** A running SDK can read and write while offline and merge after reconnecting. State disappears when all copies exit.
-- **A write is not execution confirmation.** `set()` updates local memory; `flush()` confirms NATS transport. A device should report completion separately.
-- **Automatic nodes target small LANs.** Partitions may run independently and converge to one node after communication recovers. Cross-network communication requires an actual connected NATS topology.
+| Rule | What it means for your app |
+| --- | --- |
+| **RAM-only state** | A running SDK keeps its current values offline and merges on reconnect. Events and requests have no offline replay. |
+| **Writing is not execution confirmation** | `set()` updates local memory; `flush()` confirms transport. Read an application result to confirm an action. |
+| **Mesh serves small LANs** | Node.js, Python and C++ can host an elected node. Browsers and ESP32 are clients. Partitions can briefly have multiple nodes; remote networks require connected NATS topology. |
 
-Read [How it works](architecture.md) for details and [Development](development.md) for repository maintenance and test commands.
+<details>
+<summary>Protocol and feature compatibility</summary>
+
+- Current-state protocol: **4**. Business-message protocol: **1**.
+- Web uses the JavaScript browser SDK.
+- Python live channels have no JS, C++ or ESP32 equivalent.
+- Check the [message feature table](messaging.md) and your language reference before mixing runtimes.
+
+</details>
 
 ## Feedback
 
-Small, focused issues and improvements are welcome. Report SDK problems in that repository; use [KinopioHub Issues](https://github.com/skyboooox/KinopioHub/issues) for cross-language or documentation problems. Include versions, a minimal example and the actual result.
+Report implementation issues in the relevant SDK repository. Use [KinopioHub Issues](https://github.com/skyboooox/KinopioHub/issues) for documentation or cross-language problems. Include versions, a minimal example and the actual result.

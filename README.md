@@ -1,18 +1,21 @@
 # KinopioHub
 
-Project version: **3.0.0** (not yet released).
+[简体中文](README_CN.md) · [Wiki](https://github.com/skyboooox/KinopioHub/wiki)
 
-[简体中文](README_CN.md) · [Wiki](https://github.com/skyboooox/KinopioHub/wiki/Home-EN)
-
-Share a current variable across languages and devices. A personally maintained project built on NATS Core, with automatic LAN nodes and SDK status reports.
+Share variables, send events and request responses across languages and devices through `hub.var(name)`. A personally maintained project built on NATS Core, with automatic LAN nodes and SDK status reports.
 
 ```js
-const battery = hub.scope('devices').var('battery');
+import KinopioHub from 'kinopio-hub';
+
+const hub = new KinopioHub('workshop');
+const battery = hub.var('battery');
 battery.watch(value => console.log(value));
 await battery.set(80);
 ```
 
 Variables live in SDK memory. Running instances retain current values offline and merge on reconnect; when all copies exit, state disappears.
+
+Use `pub/sub` for events and `req/handle` for requests. These messages require an active connection and are not retained or replayed. See [Events and requests](docs/messaging.md).
 
 ## Projects
 
@@ -26,7 +29,7 @@ Variables live in SDK memory. Running instances retain current values offline an
 | [Web](https://github.com/skyboooox/KinopioHub.web) | [Console](https://github.com/skyboooox/KinopioHub/wiki/Web) |
 | [Server](https://github.com/skyboooox/Kinopio-server) | [Optional NATS fork](https://github.com/skyboooox/KinopioHub/wiki/Server) |
 
-The JS, Python, C++, ESP32 and ROS v3 rewrites are currently unpublished source checkouts. Web still uses v2. Existing published packages do not contain these rewrites; v3 changes both the API and wire protocol.
+Follow the installation chapter for your language. The Web console uses the JavaScript browser SDK. Python live channels have no JS, C++ or ESP32 equivalent.
 
 ## This repository
 

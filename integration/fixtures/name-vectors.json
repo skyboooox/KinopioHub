@@ -1,0 +1,90 @@
+{
+  "protocol": 4,
+  "maxNameBytes": 128,
+  "valid": [
+    {
+      "name": "workshop",
+      "hex": "776f726b73686f70"
+    },
+    {
+      "name": "battery",
+      "hex": "62617474657279"
+    },
+    {
+      "name": "电池",
+      "hex": "e794b5e6b1a0"
+    },
+    {
+      "name": "房间.温度",
+      "hex": "e688bfe997b42ee6b8a9e5baa6"
+    },
+    {
+      "name": "a b",
+      "hex": "612062"
+    },
+    {
+      "name": "*",
+      "hex": "2a"
+    },
+    {
+      "name": ">",
+      "hex": "3e"
+    },
+    {
+      "name": "a.*.>",
+      "hex": "612e2a2e3e"
+    },
+    {
+      "name": "😀",
+      "hex": "f09f9880"
+    },
+    {
+      "name": "é",
+      "hex": "c3a9"
+    },
+    {
+      "name": "é",
+      "hex": "65cc81"
+    },
+    {
+      "name": "A",
+      "hex": "41"
+    },
+    {
+      "name": "a",
+      "hex": "61"
+    },
+    {
+      "name": "_sys",
+      "hex": "5f737973"
+    },
+    {
+      "name": " leading ",
+      "hex": "206c656164696e6720"
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "hex": "6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+    },
+    {
+      "name": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界",
+      "hex": "e7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958ce7958c"
+    }
+  ],
+  "invalid": [
+    "",
+    "\u0000",
+    "a\nb",
+    "",
+    "\ud800",
+    "\udc00",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+  ],
+  "subject": {
+    "namespace": "workshop",
+    "name": "battery",
+    "value": "776f726b73686f70.62617474657279"
+  },
+  "controlBase": "_sys.v4.776f726b73686f70"
+}

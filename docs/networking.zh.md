@@ -29,9 +29,7 @@
 JS、C++ 配置使用 camelCase，Python 使用 snake_case。JS/C++ 超时单位为毫秒，Python 为秒。
 
 ```js
-const hub = new KinopioHub({
-  namespace: 'workshop',
-  servers: ['tls://nats.example.com:4222'],
+const hub = new KinopioHub('workshop', { servers: ['tls://nats.example.com:4222'],
   mesh: false,
   discovery: false,
   tls: { handshakeFirst: true },
@@ -41,7 +39,12 @@ await hub.connected();
 
 `servers` 是**客户端入口**列表，备选入口应连向同一个逻辑 NATS 系统。在互不连接的 broker 之间切换，不会将它们连接起来，也不会让两边客户端自动交换记录。
 
-TLS-first 表示先进行 TLS 握手，再接收 NATS INFO；INFO-then-TLS 是另一种服务端设置，必须使用匹配的握手选项。认证使用 `token` 或用户名/密码字段，不把凭据嵌入 URL。自定义 CA 和客户端证书选项与传输实现有关，应查阅对应 SDK 参考，不要直接复制其他语言的字段名。
+| 连接细节 | 核对项 |
+| --- | --- |
+| TLS-first | 先 TLS 握手，再交换 NATS INFO |
+| INFO-then-TLS | 匹配监听端的另一种握手模式 |
+| 凭据 | 使用 `token` 或用户名/密码选项，不把凭据嵌入 URL |
+| 自定义 CA / 客户端证书 | 按所属 SDK 和传输的字段配置，不照搬其他语言的名称 |
 
 | 运行环境 | 直连传输 | 说明 |
 | --- | --- | --- |
@@ -55,13 +58,27 @@ TLS-first 表示先进行 TLS 握手，再接收 NATS INFO；INFO-then-TLS 是�
 <a id="chapter-3"></a>
 ## 3. 自动局域网节点的生命周期
 
-创建 Node/Python/C++ Hub 会启动自动模式，仅导入包不会启动。成员通过 IPv4 组播发现彼此并探测可达性，选举考虑网络质量和主机负载，通过连续检查与最短任期减少无意义切换。
+1. 创建 Node/Python/C++ Hub 默认开启自动模式。只导入包不启动资源；Python 需要运行中的 asyncio 循环。
+2. 成员通过 IPv4 组播发现，并探测可达性。
+3. 根据网络质量和主机负载选举，以连续检查和最短任期减少无谓切换。
 
-当选主机启动普通 NATS Core 子进程，其他 SDK 使用该节点。相容 Hub 在一个进程内共享管理器，一台物理主机贡献一票。此模式面向小型局域网，每个管理器最多跟踪另外 32 个候选者。
+| 归属与规模 | 行为 |
+| --- | --- |
+| 当选主机 | 启动 NATS Core 子进程，其他 SDK 使用该节点 |
+| 同进程 | 相容 Hub 共用管理器 |
+| 投票 | 按发现的主机身份汇总；身份由主机名和网络接口生成 |
+| 接口可见性 | 同机进程之间应保持一致 |
+| 候选预算 | 每个管理器最多跟踪 32 个其他候选，面向小型局域网 |
 
-主节点消失后，互相可达的参与者可以选择替代者。网络分区时，不同可达区域可以分别保持可用；恢复连通后收敛为一个主节点，允许短暂重叠。应用应能接受连接切换，并在恢复期间使用保留的 RAM 状态。
+| 网络变化 | 预期行为 |
+| --- | --- |
+| leader 消失 | 可达成员选择替代节点 |
+| 网络分区 | 各可达区域可独立保持可用 |
+| 恢复连通 | 收敛为一个 leader，允许短暂重叠 |
 
-选举域由 group、认证和上游设置决定，namespace 不会拆分节点。需要共享节点的设备应使用等价的域设置。ESP32 虽然不投票，其发现配置也必须匹配该域。
+应用需容忍连接变化，恢复期间使用保留的 RAM 状态。
+
+> **同一组网域须使用等价设置：** group、认证与上游共同决定选举域，namespace 不拆分节点。ESP32 虽不投票，其发现配置也必须匹配该域。
 
 托管节点的局域网客户端监听为明文，假设局域网可信。需要明确 TLS 策略时，应自行部署 broker 并使用仅客户端模式。SDK 不安装证书，也不修改防火墙。
 
@@ -69,7 +86,7 @@ TLS-first 表示先进行 TLS 握手，再接收 NATS INFO；INFO-then-TLS 是�
 ## 4. 将局域网节点接到远端系统
 
 ```js
-const hub = new KinopioHub({
+const hub = new KinopioHub('workshop', {
   mesh: {
     group: 'workshop',
     upstreams: ['nats://nats.example.com:7422'],
@@ -79,7 +96,12 @@ const hub = new KinopioHub({
 
 上游必须开放真实 NATS **leaf 监听**，普通客户端端口不能替代 leaf 端口。TLS 与 WSS leaf 模式同样需要上游提供对应支持。C++ 可以在这里使用 WS/WSS，因为 leaf 连接由托管的 NATS 执行文件处理。
 
-JS/C++ 使用 `mesh.upstreamTls`，Python 使用 `mesh["upstream_tls"]` 配置 leaf 证书和握手模式。这些配置属于托管 broker 的上游连接，不是 SDK 自身的直连 TLS 配置。备选上游应属于同一系统，并采用相容的传输模式。
+| 运行环境 | Leaf TLS 设置 |
+| --- | --- |
+| JS / C++ | `mesh.upstreamTls` |
+| Python | `mesh["upstream_tls"]` |
+
+这些字段配置托管 broker 的 leaf 证书与握手，不是 SDK 的直接客户端 TLS。备选上游须属于同一系统，传输模式相容。
 
 SDK 在应用带上游连接的本地节点前会检查真实 leaf 连通性，仅 TCP 端口可连接还不够。没有可用路径时，应检查状态和错误，不能假定本地与远端变量已经同步。监听示例见 [Server 章节](server.zh.md)。
 
@@ -92,18 +114,42 @@ SDK 在应用带上游连接的本地节点前会检查真实 leaf 连通性，�
 
 `close()` 释放 SDK 资源及其共享节点管理器参与关系。SDK 只管理自己启动的进程，不终止外部管理的 NATS 服务。最后一个持有值的 SDK 关闭后，值仍会丢失，与 broker 是否继续运行无关。
 
+需要在退出前完成已接受消息与回复时，使用 [drain](messaging.zh.md#chapter-5)。计划交接节点时先撤销旧业务订阅，再激活新连接；等待中的请求失败，不自动重放。当前值仍在重连后合并。
+
 <a id="chapter-6"></a>
 ## 6. 读取 SDK 状态
 
 | 字段组 | 含义 |
 | --- | --- |
-| `instanceId`、`name`、`sdk`、`version`、`runtime` | 运行实例身份；重启后 `instanceId` 改变 |
+| `instanceId`、`namespace`、`sdk`、`version`、`runtime` | 运行实例身份；重启后 `instanceId` 改变 |
 | `connection`、`server`、`rttMs`、`reconnects` | SDK 传输状态与观察到的连接行为 |
-| `variables`、`pendingVariables`、`pendingBytes` | 当前记录数量及待发布数据 |
+| `variables`、`pendingVariables`、`pendingBytes` | 当前记录数量及等待传输确认的数据 |
 | `sentMessages`、`receivedMessages`、`sentBytes`、`receivedBytes` | SDK 协议流量，不仅是业务流量，也不包含网络帧开销 |
 | `health`、`currentError`、`lastError` | 当前健康评估与错误信息 |
 | `mesh.role`、`leaderId`、`members`、`reason`、`upstreamConnected` | 支持自动节点时提供的组网状态 |
+| `messaging` | 消息阶段、等待请求、积压、执行中回调和已知丢弃；本地状态另外包含限制 |
 
-先用本地 `status()` 检查观察者自身。实例报告通常每五秒发送一次：远端 `online` 表示近期观察到报告，`offline` 表示报告过期，`unknown` 表示观察者自身断连，暂时无法判断。`fresh` 和 `lastSeen` 用于解释观察结果；报告不是永久设备注册表。
+先用本地 `status()` 检查观察者自身。实例报告通常**每五秒发送一次**。
+
+| 观察状态 | 含义 |
+| --- | --- |
+| `online` | 近期观察到报告 |
+| `offline` | 报告过期 |
+| `unknown` | 观察者自身断连，无法判断 |
+| `fresh`、`lastSeen` | 用于解释观察结果 |
+
+报告不是永久设备注册表。
+
+| ESP32 视图 | 内容 |
+| --- | --- |
+| 本地消息状态 | 积压、请求/处理者数量、丢弃与错误 |
+| 远端心跳 | 身份、SDK/版本、连接、健康，以及存在时的当前错误 |
+| 其他实例 | 不订阅、不缓存；由 JS/Python/C++ 构建设备在线列表 |
+
+- 远端 **`messaging`** 比本地状态精简，ESP32 不发送该字段。
+- 顶层 **`pendingVariables` / `pendingBytes`** 描述当前值传输，消息积压单独统计。
+- **缺失表示未报告，不代表零。** 不可观测的原生或网络丢失不能计为零。
+
+远端可能已经看到值，而发送方仍在等待传输确认。应结合 `pendingVariables` 和错误字段判断，不能仅凭 `connection: connected` 认为所有 flush 都已完成。
 
 SDK 健康不测量电池、温度、机器人控制器就绪状态或命令执行结果。这些业务信息应作为变量上报。面板应同时显示观察者连接状态，避免面板断连时误认为所有设备都已断电。

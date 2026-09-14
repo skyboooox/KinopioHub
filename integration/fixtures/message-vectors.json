@@ -1,0 +1,123 @@
+{
+  "messageProtocol": 1,
+  "stateProtocol": 4,
+  "namespace": "workshop",
+  "cases": [
+    {
+      "name": "battery",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.62617474657279"
+    },
+    {
+      "name": "sensor.temperature",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.73656e736f72.74656d7065726174757265"
+    },
+    {
+      "name": "传感器.温度",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.e4bca0e6849fe599a8.e6b8a9e5baa6"
+    },
+    {
+      "name": "emoji.🌡️",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.656d6f6a69.f09f8ca1efb88f"
+    },
+    {
+      "name": "sensor/a",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.73656e736f722f61"
+    },
+    {
+      "name": "living room.temperature",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.6c6976696e6720726f6f6d.74656d7065726174757265"
+    },
+    {
+      "name": "é",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.65cc81"
+    },
+    {
+      "name": "é",
+      "publish": true,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.c3a9"
+    },
+    {
+      "name": "sensor.*",
+      "publish": false,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.73656e736f72.*"
+    },
+    {
+      "name": "sensor.>",
+      "publish": false,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.73656e736f72.>"
+    },
+    {
+      "name": "*",
+      "publish": false,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.*"
+    },
+    {
+      "name": ">",
+      "publish": false,
+      "subscribe": true,
+      "subject": "_msg.v1.776f726b73686f70.>"
+    },
+    {
+      "name": "",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": ".sensor",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "sensor.",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "sensor..temperature",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "sensor.a*",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "sensor.>.temperature",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "sensor.\n",
+      "publish": false,
+      "subscribe": false
+    },
+    {
+      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "publish": false,
+      "subscribe": false
+    }
+  ],
+  "queue": {
+    "name": "workers.队列",
+    "subject": "_q.v1.776f726b73686f70.776f726b6572732ee9989fe58897"
+  }
+}

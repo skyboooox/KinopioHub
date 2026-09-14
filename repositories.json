@@ -189,6 +189,10 @@
         [
           "node",
           "test/transport-line-chunks.mjs"
+        ],
+        [
+          "node",
+          "test/messaging.mjs"
         ]
       ]
     },

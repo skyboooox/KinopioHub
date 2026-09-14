@@ -1,24 +1,27 @@
-[首页](wiki-home.md) · [Home](wiki-home.en.md)
+[Home](wiki-home.en.md) · [简体中文](wiki-home.md)
 
-## 基础 / Fundamentals
+**Start here:** [JavaScript quick start](javascript.md) · [快速上手](javascript.zh.md)
 
-- [变量与同步](variables.zh.md) · [Variables](variables.md)
-- [组网与状态](networking.zh.md) · [Networking](networking.md)
-- [排错与迁移](troubleshooting.zh.md) · [Troubleshooting](troubleshooting.md)
+## SDK manuals
 
-## SDK 手册 / Manuals
+- **JavaScript**: [Start](javascript.md) / [API](javascript-api.md) · [中文](javascript.zh.md)
+- **Python**: [Start](python.md) / [API](python-api.md) · [中文](python.zh.md)
+- **C++**: [Start](cpp.md) / [API](cpp-api.md) · [中文](cpp.zh.md)
+- **ESP32**: [Start](arduino.md) / [API](arduino-api.md) · [中文](arduino.zh.md)
+- **ROS 2**: [Start](ros.md) / [Config](ros-config.md) · [中文](ros.zh.md)
 
-- **JavaScript**：[入门](javascript.zh.md) / [参考](javascript-api.zh.md) · [Start](javascript.md) / [Reference](javascript-api.md)
-- **Python**：[入门](python.zh.md) / [参考](python-api.zh.md) · [Start](python.md) / [Reference](python-api.md)
-- **C++**：[入门](cpp.zh.md) / [参考](cpp-api.zh.md) · [Start](cpp.md) / [Reference](cpp-api.md)
-- **ESP32**：[入门](arduino.zh.md) / [参考](arduino-api.zh.md) · [Start](arduino.md) / [Reference](arduino-api.md)
-- **ROS 2**：[入门](ros.zh.md) / [参考](ros-config.zh.md) · [Start](ros.md) / [Reference](ros-config.md)
+## Fundamentals
 
-## 配套 / Project
+- [Variables and synchronization](variables.md) · [中文](variables.zh.md)
+- [Events and requests](messaging.md) · [中文](messaging.zh.md)
+- [Networking and SDK status](networking.md) · [中文](networking.zh.md)
+- [Troubleshooting and migration](troubleshooting.md) · [中文](troubleshooting.zh.md)
 
-- [Server](server.zh.md) · [Server](server.md)
-- [工作原理](architecture.zh.md) · [Architecture](architecture.md)
-- [开发说明](development.zh.md) · [Development](development.md)
-- [Web（待迁移）](web.zh.md) · [Web (pending migration)](web.md)
+## Project
+
+- [Web console](web.md) · [中文](web.zh.md)
+- [Architecture](architecture.md) · [中文](architecture.zh.md)
+- [Server](server.md) · [中文](server.zh.md)
+- [Development and releases](development.md) · [中文](development.zh.md)
 
 [GitHub](https://github.com/skyboooox/KinopioHub) · [Issues](https://github.com/skyboooox/KinopioHub/issues)
